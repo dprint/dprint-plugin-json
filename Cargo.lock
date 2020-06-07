@@ -47,9 +47,9 @@ dependencies = [
 
 [[package]]
 name = "dprint-core"
-version = "0.21.0"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9af3a227d18ba1d53ae7518b339857fb97671c06da411442bf019fb0b6921f10"
+checksum = "82eea9992757bf485cdc412bc66a8246ae0045c9b199e2a0b0b173764a1bd45f"
 dependencies = [
  "serde",
 ]
@@ -65,7 +65,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-jsonc"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "debug-here",
  "dprint-core",
@@ -92,9 +92,9 @@ checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
 
 [[package]]
 name = "jsonc-parser"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "793282be8bf32d41acf0aa97a0246e712d0ec9be89b30286ae1e709544db35c6"
+checksum = "030c40aab885ff629ec30ac02b5a4fda3d4ed09992d7daf2f188ff931f6f301b"
 
 [[package]]
 name = "lazy_static"
