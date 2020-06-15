@@ -22,4 +22,8 @@ fn get_plugin_config_schema_url() -> String {
     String::new() // none until https://github.com/microsoft/vscode/issues/98443 is resolved
 }
 
+fn get_plugin_license_text() -> String {
+    std::str::from_utf8(include_bytes!("../LICENSE")).unwrap().into()
+}
+
 generate_plugin_code!();

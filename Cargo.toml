@@ -13,11 +13,11 @@ repository = "https://github.com/dprint/dprint-plugin-json"
 crate-type = ["lib", "cdylib"]
 
 [dependencies]
-dprint-core = "0.21.1"
+dprint-core = "0.22.0"
 jsonc-parser = { version = "0.12.2" }
 serde = { version = "1.0.88", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
-dprint-development = "0.2.0"
+dprint-development = "0.2.2"
 debug-here = "0.2"
