@@ -12,6 +12,14 @@ repository = "https://github.com/dprint/dprint-plugin-json"
 [lib]
 crate-type = ["lib", "cdylib"]
 
+[profile.release]
+opt-level = 3
+debug = false
+lto = true
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
+
 [dependencies]
 dprint-core = "0.22.0"
 jsonc-parser = { version = "0.12.2" }
