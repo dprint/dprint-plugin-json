@@ -1,4 +1,4 @@
-use dprint_core::{print, PrintOptions};
+use dprint_core::formatting::{print, PrintOptions};
 use dprint_core::configuration::resolve_new_line_kind;
 use super::configuration::Configuration;
 use super::parser::parse_items;

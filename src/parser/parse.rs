@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use dprint_core::*;
+use dprint_core::formatting::*;
 use jsonc_parser::{parse_to_ast, ParseOptions};
 use jsonc_parser::ast::*;
 use jsonc_parser::common::{Position, Ranged, Range};
@@ -12,7 +12,7 @@ pub fn parse_items(text: &str, config: &Configuration) -> Result<PrintItems, Str
     let parse_result = parse_to_ast(text, &ParseOptions { comments: true, tokens: true });
     let parse_result = match parse_result {
         Ok(result) => result,
-        Err(err) => return Err(dprint_core::utils::string_utils::format_diagnostic(
+        Err(err) => return Err(dprint_core::formatting::utils::string_utils::format_diagnostic(
             Some((err.range.start, err.range.end)),
             &err.message,
             text

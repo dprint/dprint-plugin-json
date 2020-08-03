@@ -1,6 +1,6 @@
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::{Token, TokenAndRange};
-use dprint_core::tokens::{TokenFinder as CoreTokenFinder, TokenCollection};
+use dprint_core::formatting::tokens::{TokenFinder as CoreTokenFinder, TokenCollection};
 
 pub struct TokenFinder<'a> {
     inner: CoreTokenFinder<LocalTokenCollection<'a>>,
