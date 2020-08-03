@@ -22,7 +22,7 @@ fn test_specs() {
         &ParseSpecOptions { default_file_name: "file.json" },
         &RunSpecsOptions { fix_failures: false, format_twice: true },
         move |_, file_text, spec_config| {
-            let config_result = resolve_config(spec_config.clone(), &global_config);
+            let config_result = resolve_config(parse_config_key_map(spec_config), &global_config);
             ensure_no_diagnostics(&config_result.diagnostics);
 
             format_text(&file_text, &config_result.config)

@@ -1,5 +1,4 @@
 use dprint_core::configuration::*;
-use std::collections::HashMap;
 use super::Configuration;
 
 /// Resolves configuration from a collection of key value strings.
@@ -24,7 +23,7 @@ use super::Configuration;
 ///
 /// // check config_result.diagnostics here and use config_result.config
 /// ```
-pub fn resolve_config(config: HashMap<String, String>, global_config: &GlobalConfiguration) -> ResolveConfigurationResult<Configuration> {
+pub fn resolve_config(config: ConfigKeyMap, global_config: &GlobalConfiguration) -> ResolveConfigurationResult<Configuration> {
     let mut diagnostics = Vec::new();
     let mut config = config;
 
