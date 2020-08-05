@@ -1,4 +1,4 @@
-~~ lineWidth: 60 ~~
+~~ lineWidth: 60, indentWidth: 4 ~~
 == should format with comments ==
 // test
 { // here

@@ -25,76 +25,76 @@
 
 [expect]
 {
-    "prop": 5,
+  "prop": 5,
 
-    // testing
+  // testing
 
-    // asdf
+  // asdf
 
-    /* test */
+  /* test */
 
-    /* test2 */
-    "prop2": 5,
+  /* test2 */
+  "prop2": 5,
 
-    /* asdf */
+  /* asdf */
 
-    "prop3": 5
+  "prop3": 5
 }
 
 == should handle blank lines when there is a comment at the start ==
 {
 
-    // test
+  // test
 
-    "test": 5
+  "test": 5
 }
 
 [expect]
 {
-    // test
+  // test
 
-    "test": 5
+  "test": 5
 }
 
 == should add a blank line between a comment line and the previous property when there is one ==
 {
-    "prop": 5,
+  "prop": 5,
 
-    // test
+  // test
 
-    "prop2": 4
+  "prop2": 4
 }
 
 [expect]
 {
-    "prop": 5,
+  "prop": 5,
 
-    // test
+  // test
 
-    "prop2": 4
+  "prop2": 4
 }
 
 == should add a blank line between a comment block and the previous property when there is one ==
 {
-    "prop": 5,
+  "prop": 5,
 
-    /* test */
+  /* test */
 
-    "prop2": 4
+  "prop2": 4
 }
 
 [expect]
 {
-    "prop": 5,
+  "prop": 5,
 
-    /* test */
+  /* test */
 
-    "prop2": 4
+  "prop2": 4
 }
 
 == should remove blank lines at the end ==
 {
-    "prop": 5
+  "prop": 5
 
 
 
@@ -102,5 +102,5 @@
 
 [expect]
 {
-    "prop": 5
+  "prop": 5
 }

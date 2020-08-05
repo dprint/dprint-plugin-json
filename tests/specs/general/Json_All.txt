@@ -1,5 +1,5 @@
 -- /file.json --
-~~ lineWidth: 60 ~~
+~~ lineWidth: 60, indentWidth: 4 ~~
 == should keep on one line for an empty root node ==
 {}
 
