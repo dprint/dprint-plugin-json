@@ -89,9 +89,9 @@ checksum = "b8b7a7c0c47db5545ed3fef7468ee7bb5b74691498139e4b3f6a20685dc6dd8e"
 
 [[package]]
 name = "jsonc-parser"
-version = "0.12.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "030c40aab885ff629ec30ac02b5a4fda3d4ed09992d7daf2f188ff931f6f301b"
+checksum = "8ce9b3e88481b91c43f37e742879a70dd5855e59f736bf3cac9b1383d68c1186"
 
 [[package]]
 name = "lazy_static"
