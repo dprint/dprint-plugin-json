@@ -47,9 +47,9 @@ dependencies = [
 
 [[package]]
 name = "dprint-core"
-version = "0.28.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fab44561ffc8f70d26d6c4cc81a648ecd47dd60836abecf0599253a7b9fdbf5d"
+checksum = "a15e15225efcb6eccd138dea49bf7aa390248ab0faf650b1b8a7ad660a5778cc"
 dependencies = [
  "serde",
 ]
@@ -62,7 +62,7 @@ checksum = "417ed417346ddd21939fd451061d93d13e9df53c97dc15a2c71faa9c9881710e"
 
 [[package]]
 name = "dprint-plugin-jsonc"
-version = "0.7.0"
+version = "0.7.1"
 dependencies = [
  "debug-here",
  "dprint-core",

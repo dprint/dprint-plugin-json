@@ -66,4 +66,28 @@ jobs:
       with:
         files: |
           target/wasm32-unknown-unknown/release/json-${{ steps.get_tag_version.outputs.TAG_VERSION }}.wasm
+        body: |
+          ## Install
+
+          [Install](https://dprint.dev/install/) and [setup](https://dprint.dev/setup/) dprint.
+
+          Then in your project's *.dprintrc.json*:
+
+          1. Specify the plugin url in the `"plugins"` array.
+          2. Ensure `.json` file extensions are matched in an `"includes"` pattern.
+          3. Add a `"json"` configuration property if desired.
+             ```jsonc
+             {
+               // ...etc...
+               "json": {
+                 // json config goes here
+               },
+               "includes": [
+                 "**/*.{json}"
+               ],
+               "plugins": [
+                 "https://plugins.dprint.dev/json-${{ steps.get_tag_version.outputs.TAG_VERSION }}.wasm"
+               ]
+             }
+             ```
         draft: true
