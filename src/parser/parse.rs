@@ -100,7 +100,7 @@ fn parse_node_with_inner<'a>(
             Node::Array(node) => parse_array(node, context),
             Node::BooleanLit(node) => node.value.to_string().into(),
             Node::NullKeyword(_) => "null".into(),
-            Node::NumberLit(node) => node.value.as_ref().into(),
+            Node::NumberLit(node) => node.value.as_str().into(),
             Node::Object(node) => parse_object(node, context),
             Node::ObjectProp(node) => parse_object_prop(node, context),
             Node::StringLit(node) => parse_string_lit(node, context),
@@ -110,7 +110,7 @@ fn parse_node_with_inner<'a>(
 }
 
 fn parse_array<'a>(node: &'a Array, context: &mut Context<'a>) -> PrintItems {
-    let force_multi_lines = node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line);
+    let force_multi_lines = should_break_up_single_line(node, context) || node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line);
 
     parse_surrounded_by_tokens(|context| {
         let mut items = PrintItems::new();
@@ -136,7 +136,7 @@ fn parse_array<'a>(node: &'a Array, context: &mut Context<'a>) -> PrintItems {
 }
 
 fn parse_object<'a>(obj: &'a Object, context: &mut Context<'a>) -> PrintItems {
-    let force_multi_lines = obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line);
+    let force_multi_lines = should_break_up_single_line(obj, context) || obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line);
 
     parse_surrounded_by_tokens(|context| {
         let mut items = PrintItems::new();
@@ -186,7 +186,7 @@ fn parse_word_lit<'a>(node: &'a WordLit, _: &mut Context<'a>) -> PrintItems {
     // this will be a property name that's not a string literal
     let mut items = PrintItems::new();
     items.push_str("\"");
-    items.push_str(&node.value.as_ref());
+    items.push_str(&node.value.as_str());
     items.push_str("\"");
     items
 }
@@ -578,13 +578,13 @@ fn parse_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems>
     fn parse_comment_block(comment: &CommentBlock) -> PrintItems {
         let mut items = PrintItems::new();
         items.push_str("/*");
-        items.extend(parser_helpers::parse_raw_string(comment.text.as_ref()));
+        items.extend(parser_helpers::parse_raw_string(comment.text.as_str()));
         items.push_str("*/");
         items
     }
 
     fn parse_comment_line(comment: &CommentLine, context: &mut Context) -> PrintItems {
-        parser_helpers::parse_js_like_comment_line(&comment.text.as_ref(), context.config.comment_line_force_space_after_slashes)
+        parser_helpers::parse_js_like_comment_line(&comment.text.as_str(), context.config.comment_line_force_space_after_slashes)
     }
 }
 
@@ -594,4 +594,16 @@ fn has_ignore_comment(node: &dyn Ranged, context: &Context) -> bool {
     } else {
         false
     }
+}
+
+fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool {
+    // This is a massive performance improvement when formatting huge single line files.
+    // Basically, if the node is on a single line and will for sure format as multi-line, then
+    // say it's multi-line right away and avoid creating print items to figure that out.
+    let range = ranged.range();
+
+    // Obviously this line_width * 2 is not always accurate as it doesn't take into account whitespace,
+    // but will provide a good enough and fast way to quickly tell if it's long without having basically
+    // any false positives (unless someone is being silly).
+    range.start_line == range.end_line && range.width() > (context.config.line_width * 2) as usize
 }
