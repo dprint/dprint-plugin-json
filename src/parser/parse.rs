@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use dprint_core::formatting::*;
-use jsonc_parser::{parse_to_ast, ParseOptions};
 use jsonc_parser::ast::*;
 use jsonc_parser::common::{Position, Ranged, Range};
 use jsonc_parser::tokens::{TokenAndRange};
@@ -8,16 +7,7 @@ use super::super::configuration::Configuration;
 use super::context::Context;
 use super::token_finder::TokenFinder;
 
-pub fn parse_items(text: &str, config: &Configuration) -> Result<PrintItems, String> {
-    let parse_result = parse_to_ast(text, &ParseOptions { comments: true, tokens: true });
-    let parse_result = match parse_result {
-        Ok(result) => result,
-        Err(err) => return Err(dprint_core::formatting::utils::string_utils::format_diagnostic(
-            Some((err.range.start, err.range.end)),
-            &err.message,
-            text
-        )),
-    };
+pub fn parse_items(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
     let comments = parse_result.comments.unwrap();
     let tokens = parse_result.tokens.unwrap();
     let node_value = parse_result.value;
@@ -46,7 +36,7 @@ pub fn parse_items(text: &str, config: &Configuration) -> Result<PrintItems, Str
         Signal::NewLine.into()
     ));
 
-    Ok(items)
+    items
 }
 
 fn parse_node<'a>(node: Node<'a>, context: &mut Context<'a>) -> PrintItems {

@@ -1,12 +1,21 @@
-use dprint_core::formatting::{print, PrintOptions};
+use dprint_core::formatting::{PrintOptions};
 use dprint_core::configuration::resolve_new_line_kind;
+use jsonc_parser::{parse_to_ast, ParseOptions};
 use super::configuration::Configuration;
 use super::parser::parse_items;
 
 pub fn format_text(text: &str, config: &Configuration) -> Result<String, String> {
-    let print_items = parse_items(text, config)?;
+    let parse_result = parse_to_ast(text, &ParseOptions { comments: true, tokens: true });
+    let parse_result = match parse_result {
+        Ok(result) => result,
+        Err(err) => return Err(dprint_core::formatting::utils::string_utils::format_diagnostic(
+            Some((err.range.start, err.range.end)),
+            &err.message,
+            text
+        )),
+    };
 
-    Ok(print(print_items, PrintOptions {
+    Ok(dprint_core::formatting::format(|| parse_items(parse_result, text, config), PrintOptions {
         indent_width: config.indent_width,
         max_width: config.line_width,
         use_tabs: config.use_tabs,
