@@ -83,6 +83,13 @@ impl ConfigurationBuilder {
         self.insert("ignoreNodeCommentText", value.into())
     }
 
+    /// Sets the configuration to what is used in Deno.
+    pub fn deno(&mut self) -> &mut Self {
+        self.line_width(80)
+            .ignore_node_comment_text("deno-fmt-ignore")
+            .comment_line_force_space_after_slashes(false)
+    }
+
     #[cfg(test)]
     pub(super) fn get_inner_config(&self) -> ConfigKeyMap {
         self.config.clone()
@@ -138,5 +145,17 @@ mod tests {
         let config = config_builder.global_config(global_config).build();
         assert_eq!(config.indent_width, 2); // this is different
         assert_eq!(config.new_line_kind == NewLineKind::LineFeed, true);
+    }
+
+    #[test]
+    fn support_deno_config() {
+        let mut config_builder = ConfigurationBuilder::new();
+        let config = config_builder.deno().build();
+        assert_eq!(config.indent_width, 2);
+        assert_eq!(config.line_width, 80);
+        assert_eq!(config.new_line_kind == NewLineKind::LineFeed, true);
+        assert_eq!(config.use_tabs, false);
+        assert_eq!(config.comment_line_force_space_after_slashes, false);
+        assert_eq!(config.ignore_node_comment_text, "deno-fmt-ignore");
     }
 }
