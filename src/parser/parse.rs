@@ -67,11 +67,12 @@ fn parse_node_with_inner<'a>(
     }
 
     // parse the node
-    items.extend(if has_ignore_comment(&node, context) {
-        parser_helpers::parse_raw_string(node.text(context.text))
+    if has_ignore_comment(&node, context) {
+        items.push_str(""); // force the current line indentation
+        items.extend(inner_parse(parser_helpers::parse_raw_string(node.text(context.text)), context));
     } else {
-        inner_parse(parse_node_inner(node.clone(), context), context)
-    });
+        items.extend(inner_parse(parse_node_inner(node.clone(), context), context))
+    }
 
     // get the trailing comments
     if is_root || parent_end.is_some() && parent_end.unwrap() != node_end {
@@ -580,7 +581,7 @@ fn parse_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems>
 
 fn has_ignore_comment(node: &dyn Ranged, context: &Context) -> bool {
     if let Some(last_comment) = context.comments.get(&(node.start())).map(|c| c.last()).flatten() {
-        parser_helpers::text_has_dprint_ignore(last_comment.text(), "dprint-ignore")
+        parser_helpers::text_has_dprint_ignore(last_comment.text(), &context.config.ignore_node_comment_text)
     } else {
         false
     }

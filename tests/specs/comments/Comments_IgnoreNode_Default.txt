@@ -1,0 +1,23 @@
+== should ignore formatting a node when there is an ignore comment ==
+{
+  // dprint-ignore
+  "test": {
+      // asdf
+                    "asdf": 3
+  },
+  "other": {
+               "asdf": 3
+  }
+}
+
+[expect]
+{
+  // dprint-ignore
+  "test": {
+      // asdf
+                    "asdf": 3
+  },
+  "other": {
+    "asdf": 3
+  }
+}

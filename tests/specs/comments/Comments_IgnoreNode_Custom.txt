@@ -1,0 +1,24 @@
+~~ ignoreNodeCommentText: deno-fmt-ignore ~~
+== should ignore formatting a node when there is an ignore comment ==
+{
+  // deno-fmt-ignore
+  "test": {
+      // asdf
+                    "asdf": 3
+  },
+  "other": {
+               "asdf": 3
+  }
+}
+
+[expect]
+{
+  // deno-fmt-ignore
+  "test": {
+      // asdf
+                    "asdf": 3
+  },
+  "other": {
+    "asdf": 3
+  }
+}

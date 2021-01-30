@@ -10,4 +10,5 @@ pub struct Configuration {
     pub new_line_kind: NewLineKind,
     #[serde(rename = "commentLine.forceSpaceAfterSlashes")]
     pub comment_line_force_space_after_slashes: bool,
+    pub ignore_node_comment_text: String,
 }

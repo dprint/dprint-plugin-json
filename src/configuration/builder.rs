@@ -76,6 +76,13 @@ impl ConfigurationBuilder {
         self.insert("commentLine.forceSpaceAfterSlashes", value.into())
     }
 
+    /// The text to use for an ignore comment (ex. `// dprint-ignore`).
+    ///
+    /// Default: `"dprint-ignore"`
+    pub fn ignore_node_comment_text(&mut self, value: &str) -> &mut Self {
+        self.insert("ignoreNodeCommentText", value.into())
+    }
+
     #[cfg(test)]
     pub(super) fn get_inner_config(&self) -> ConfigKeyMap {
         self.config.clone()
@@ -102,10 +109,11 @@ mod tests {
             .use_tabs(true)
             .indent_width(4)
             .new_line_kind(NewLineKind::CarriageReturnLineFeed)
-            .comment_line_force_space_after_slashes(false);
+            .comment_line_force_space_after_slashes(false)
+            .ignore_node_comment_text("deno-fmt-ignore");
 
         let inner_config = config.get_inner_config();
-        assert_eq!(inner_config.len(), 5);
+        assert_eq!(inner_config.len(), 6);
         let diagnostics = resolve_config(inner_config, &resolve_global_config(HashMap::new()).config).diagnostics;
         assert_eq!(diagnostics.len(), 0);
     }

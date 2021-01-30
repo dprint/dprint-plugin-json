@@ -33,6 +33,7 @@ pub fn resolve_config(config: ConfigKeyMap, global_config: &GlobalConfiguration)
         indent_width: get_value(&mut config, "indentWidth", global_config.indent_width.unwrap_or(2), &mut diagnostics),
         new_line_kind: get_value(&mut config, "newLineKind", global_config.new_line_kind.unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.new_line_kind), &mut diagnostics),
         comment_line_force_space_after_slashes: get_value(&mut config, "commentLine.forceSpaceAfterSlashes", true, &mut diagnostics),
+        ignore_node_comment_text: get_value(&mut config, "ignoreNodeCommentText", String::from("dprint-ignore"), &mut diagnostics),
     };
 
     diagnostics.extend(get_unknown_property_diagnostics(config));
