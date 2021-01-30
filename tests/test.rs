@@ -1,4 +1,4 @@
-extern crate dprint_plugin_jsonc;
+extern crate dprint_plugin_json;
 extern crate dprint_development;
 
 //#[macro_use] extern crate debug_here;
@@ -9,8 +9,8 @@ use std::path::PathBuf;
 
 use dprint_core::configuration::*;
 use dprint_development::*;
-use dprint_plugin_jsonc::format_text;
-use dprint_plugin_jsonc::configuration::{resolve_config};
+use dprint_plugin_json::format_text;
+use dprint_plugin_json::configuration::{resolve_config};
 
 #[test]
 fn test_specs() {

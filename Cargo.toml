@@ -1,8 +1,8 @@
 [package]
-name = "dprint-plugin-jsonc"
+name = "dprint-plugin-json"
 description = "JSON formatter for dprint."
 keywords = ["formatting", "formatter", "json", "jsonc"]
-version = "0.7.3"
+version = "0.8.0"
 authors = ["David Sherret <dsherret@gmail.com>"]
 license = "MIT"
 edition = "2018"
