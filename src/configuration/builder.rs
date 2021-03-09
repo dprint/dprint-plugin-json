@@ -15,7 +15,7 @@ use super::*;
 ///     .build();
 /// ```
 pub struct ConfigurationBuilder {
-    config: ConfigKeyMap,
+    pub(super) config: ConfigKeyMap,
     global_config: Option<GlobalConfiguration>,
 }
 
