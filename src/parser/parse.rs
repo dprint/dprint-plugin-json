@@ -39,14 +39,14 @@ pub fn parse_items(parse_result: jsonc_parser::ParseResult, text: &str, config: 
     items
 }
 
-fn parse_node<'a>(node: Node<'a>, context: &mut Context<'a>) -> PrintItems {
+fn parse_node<'a>(node: Node<'a, 'a>, context: &mut Context<'a, '_>) -> PrintItems {
     parse_node_with_inner(node, context, |items, _| items)
 }
 
 fn parse_node_with_inner<'a>(
-    node: Node<'a>,
-    context: &mut Context<'a>,
-    inner_parse: impl FnOnce(PrintItems, &mut Context<'a>) -> PrintItems
+    node: Node<'a, 'a>,
+    context: &mut Context<'a, '_>,
+    inner_parse: impl FnOnce(PrintItems, &mut Context<'a, '_>) -> PrintItems
 ) -> PrintItems {
     // store info
     let past_current_node = context.current_node.replace(node.clone());
@@ -86,12 +86,12 @@ fn parse_node_with_inner<'a>(
     return items;
 
     #[inline]
-    fn parse_node_inner<'a>(node: Node<'a>, context: &mut Context<'a>) -> PrintItems {
+    fn parse_node_inner<'a>(node: Node<'a, 'a>, context: &mut Context<'a, '_>) -> PrintItems {
         match node {
             Node::Array(node) => parse_array(node, context),
             Node::BooleanLit(node) => node.value.to_string().into(),
             Node::NullKeyword(_) => "null".into(),
-            Node::NumberLit(node) => node.value.as_str().into(),
+            Node::NumberLit(node) => node.value.into(),
             Node::Object(node) => parse_object(node, context),
             Node::ObjectProp(node) => parse_object_prop(node, context),
             Node::StringLit(node) => parse_string_lit(node, context),
@@ -100,7 +100,7 @@ fn parse_node_with_inner<'a>(
     }
 }
 
-fn parse_array<'a>(node: &'a Array, context: &mut Context<'a>) -> PrintItems {
+fn parse_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintItems {
     let force_multi_lines = should_break_up_single_line(node, context) || node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line);
 
     parse_surrounded_by_tokens(|context| {
@@ -126,7 +126,7 @@ fn parse_array<'a>(node: &'a Array, context: &mut Context<'a>) -> PrintItems {
     }, context)
 }
 
-fn parse_object<'a>(obj: &'a Object, context: &mut Context<'a>) -> PrintItems {
+fn parse_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems {
     let force_multi_lines = should_break_up_single_line(obj, context) || obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line);
 
     parse_surrounded_by_tokens(|context| {
@@ -152,7 +152,7 @@ fn parse_object<'a>(obj: &'a Object, context: &mut Context<'a>) -> PrintItems {
     }, context)
 }
 
-fn parse_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a>) -> PrintItems {
+fn parse_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> PrintItems {
     let mut items = PrintItems::new();
     items.extend(parse_node((&node.name).into(), context));
     items.push_str(": ");
@@ -161,7 +161,7 @@ fn parse_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a>) -> Pri
     items
 }
 
-fn parse_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a>) -> PrintItems {
+fn parse_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> PrintItems {
     let text = node.text(context.text);
     let is_double_quotes = text.chars().next().unwrap() == '"';
     let mut items = PrintItems::new();
@@ -173,17 +173,17 @@ fn parse_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a>) -> Print
     items
 }
 
-fn parse_word_lit<'a>(node: &'a WordLit, _: &mut Context<'a>) -> PrintItems {
+fn parse_word_lit<'a>(node: &'a WordLit<'a>, _: &mut Context<'a, '_>) -> PrintItems {
     // this will be a property name that's not a string literal
     let mut items = PrintItems::new();
     items.push_str("\"");
-    items.push_str(&node.value.as_str());
+    items.push_str(node.value);
     items.push_str("\"");
     items
 }
 
 struct ParseCommaSeparatedValuesOptions<'a> {
-    nodes: Vec<Option<Node<'a>>>,
+    nodes: Vec<Option<Node<'a, 'a>>>,
     prefer_hanging: bool,
     force_use_new_lines: bool,
     allow_blank_lines: bool,
@@ -196,7 +196,7 @@ struct ParseCommaSeparatedValuesOptions<'a> {
 
 fn parse_comma_separated_values<'a>(
     opts: ParseCommaSeparatedValuesOptions<'a>,
-    context: &mut Context<'a>
+    context: &mut Context<'a, '_>
 ) -> PrintItems {
     let nodes = opts.nodes;
     let indent_width = context.config.indent_width;
@@ -240,7 +240,7 @@ fn parse_comma_separated_values<'a>(
     }).items
 }
 
-fn parse_comma_separated_value<'a>(value: Option<Node<'a>>, parsed_comma: PrintItems, context: &mut Context<'a>) -> PrintItems {
+fn parse_comma_separated_value<'a>(value: Option<Node<'a, 'a>>, parsed_comma: PrintItems, context: &mut Context<'a, '_>) -> PrintItems {
     let mut items = PrintItems::new();
     let comma_token = get_comma_token(&value, context);
 
@@ -262,7 +262,7 @@ fn parse_comma_separated_value<'a>(value: Option<Node<'a>>, parsed_comma: PrintI
 
     return items;
 
-    fn get_comma_token<'a>(element: &Option<Node<'a>>, context: &mut Context<'a>) -> Option<&'a TokenAndRange> {
+    fn get_comma_token<'a, 'b>(element: &Option<Node>, context: &mut Context<'a, 'b>) -> Option<&'b TokenAndRange<'a>> {
         if let Some(element) = element {
             context.token_finder.get_next_token_if_comma(element)
         } else {
@@ -279,10 +279,10 @@ struct ParseSurroundedByTokensOptions<'a> {
     prefer_single_line_when_empty: bool,
 }
 
-fn parse_surrounded_by_tokens<'a>(
-    parse_inner: impl FnOnce(&mut Context<'a>) -> PrintItems,
+fn parse_surrounded_by_tokens<'a, 'b>(
+    parse_inner: impl FnOnce(&mut Context<'a, 'b>) -> PrintItems,
     opts: ParseSurroundedByTokensOptions<'a>,
-    context: &mut Context<'a>
+    context: &mut Context<'a, 'b>
 ) -> PrintItems {
     let open_token_end = Position::new(opts.range.start + opts.open_token.len(), opts.range.start_line);
     let close_token_start = Position::new(opts.range.end - opts.close_token.len(), opts.range.end_line);
@@ -376,7 +376,7 @@ fn parse_surrounded_by_tokens<'a>(
 
     return items;
 
-    fn parse_first_line_trailing_comment<'a>(open_token_start_line: usize, comments: impl Iterator<Item=&'a Comment>, context: &mut Context) -> PrintItems {
+    fn parse_first_line_trailing_comment<'a: 'b, 'b>(open_token_start_line: usize, comments: impl Iterator<Item=&'b Comment<'a>>, context: &mut Context) -> PrintItems {
         let mut items = PrintItems::new();
         let mut comments = comments;
         if let Some(first_comment) = comments.next() {
@@ -395,11 +395,11 @@ fn parse_surrounded_by_tokens<'a>(
 
 // Comments
 
-fn has_unhandled_comment<'a>(comments: impl Iterator<Item=&'a Comment>, context: &mut Context) -> bool {
+fn has_unhandled_comment<'a: 'b, 'b>(comments: impl Iterator<Item=&'b Comment<'a>>, context: &mut Context) -> bool {
     comments.filter(|c| !context.has_handled_comment(c)).next().is_some()
 }
 
-fn parse_trailing_comments<'a>(node: &dyn Ranged, context: &mut Context<'a>) -> PrintItems {
+fn parse_trailing_comments(node: &dyn Ranged, context: &mut Context) -> PrintItems {
     if let Some(trailing_comments) = context.comments.get(&node.end()) {
         parse_comments_as_trailing(node, trailing_comments.iter(), context)
     } else {
@@ -407,12 +407,12 @@ fn parse_trailing_comments<'a>(node: &dyn Ranged, context: &mut Context<'a>) -> 
     }
 }
 
-fn parse_trailing_comments_as_statements<'a>(node: &dyn Ranged, context: &mut Context<'a>) -> PrintItems {
+fn parse_trailing_comments_as_statements(node: &dyn Ranged, context: &mut Context) -> PrintItems {
     let unhandled_comments = get_trailing_comments_as_statements(node, context);
     parse_comments_as_statements(unhandled_comments.into_iter(), Some(node), context)
 }
 
-fn get_trailing_comments_as_statements<'a>(node: &dyn Ranged, context: &mut Context<'a>) -> Vec<&'a Comment> {
+fn get_trailing_comments_as_statements<'a, 'b>(node: &dyn Ranged, context: &mut Context<'a, 'b>) -> Vec<&'b Comment<'a>> {
     let mut comments = Vec::new();
     let node_end_line = node.end_line();
     if let Some(trailing_comments) = context.comments.get(&node.end()) {
@@ -425,7 +425,7 @@ fn get_trailing_comments_as_statements<'a>(node: &dyn Ranged, context: &mut Cont
     comments
 }
 
-fn parse_comments_as_statements<'a>(comments: impl Iterator<Item=&'a Comment>, last_node: Option<&dyn Ranged>, context: &mut Context<'a>) -> PrintItems {
+fn parse_comments_as_statements<'a: 'b, 'b>(comments: impl Iterator<Item=&'b Comment<'a>>, last_node: Option<&dyn Ranged>, context: &mut Context<'a, 'b>) -> PrintItems {
     let mut last_node = last_node;
     let mut items = PrintItems::new();
     for comment in comments {
@@ -439,7 +439,7 @@ fn parse_comments_as_statements<'a>(comments: impl Iterator<Item=&'a Comment>, l
     items
 }
 
-fn parse_comments_as_leading<'a>(node: &dyn Ranged, comments: impl Iterator<Item=&'a Comment>, context: &mut Context) -> PrintItems {
+fn parse_comments_as_leading<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterator<Item=&'b Comment<'a>>, context: &mut Context) -> PrintItems {
     let mut items = PrintItems::new();
     let comments = comments.filter(|c| !context.has_handled_comment(c)).collect::<Vec<_>>();
 
@@ -465,7 +465,7 @@ fn parse_comments_as_leading<'a>(node: &dyn Ranged, comments: impl Iterator<Item
     items
 }
 
-fn parse_comments_as_trailing<'a>(node: &dyn Ranged, comments: impl Iterator<Item=&'a Comment>, context: &mut Context) -> PrintItems {
+fn parse_comments_as_trailing<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterator<Item=&'b Comment<'a>>, context: &mut Context) -> PrintItems {
     // use the roslyn definition of trailing comments
     let node_end_line = node.end_line();
     let trailing_comments_on_same_line = comments
@@ -484,8 +484,8 @@ fn parse_comments_as_trailing<'a>(node: &dyn Ranged, comments: impl Iterator<Ite
     items
 }
 
-fn parse_comment_collection<'a>(
-    comments: impl Iterator<Item=&'a Comment>,
+fn parse_comment_collection<'a: 'b, 'b>(
+    comments: impl Iterator<Item=&'b Comment<'a>>,
     last_node: Option<&dyn Ranged>,
     next_node: Option<&dyn Ranged>,
     context: &mut Context
@@ -569,13 +569,13 @@ fn parse_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems>
     fn parse_comment_block(comment: &CommentBlock) -> PrintItems {
         let mut items = PrintItems::new();
         items.push_str("/*");
-        items.extend(parser_helpers::parse_raw_string(comment.text.as_str()));
+        items.extend(parser_helpers::parse_raw_string(comment.text));
         items.push_str("*/");
         items
     }
 
     fn parse_comment_line(comment: &CommentLine, context: &mut Context) -> PrintItems {
-        parser_helpers::parse_js_like_comment_line(&comment.text.as_str(), context.config.comment_line_force_space_after_slashes)
+        parser_helpers::parse_js_like_comment_line(&comment.text, context.config.comment_line_force_space_after_slashes)
     }
 }
 

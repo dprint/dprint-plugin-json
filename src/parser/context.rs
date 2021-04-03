@@ -5,17 +5,17 @@ use jsonc_parser::CommentMap;
 use super::super::configuration::Configuration;
 use super::token_finder::TokenFinder;
 
-pub struct Context<'a> {
-    pub config: &'a Configuration,
-    pub text: &'a str,
+pub struct Context<'a, 'b> {
+    pub config: &'b Configuration,
+    pub text: &'b str,
     pub handled_comments: HashSet<usize>,
-    pub parent_stack: Vec<Node<'a>>,
-    pub current_node: Option<Node<'a>>,
-    pub comments: &'a CommentMap,
+    pub parent_stack: Vec<Node<'a, 'a>>,
+    pub current_node: Option<Node<'a, 'a>>,
+    pub comments: &'b CommentMap<'a>,
     pub token_finder: TokenFinder<'a>,
 }
 
-impl<'a> Context<'a> {
+impl<'a, 'b> Context<'a, 'b> {
     pub fn has_handled_comment(&self, comment: &Comment) -> bool {
         self.handled_comments.contains(&comment.start())
     }
