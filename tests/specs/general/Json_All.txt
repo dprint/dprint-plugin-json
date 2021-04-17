@@ -52,7 +52,7 @@
     "testing": "asdf \"test\""
 }
 
-== should handle property names without values ==
+== should handle property names without quotes ==
 {
     testing: "testing",
     a1: "asdf",
