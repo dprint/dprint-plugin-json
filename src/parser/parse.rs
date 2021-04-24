@@ -561,22 +561,10 @@ fn parse_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems>
 
     // mark handled and parse
     context.mark_comment_handled(comment);
-    return Some(match comment {
-        Comment::Block(comment) => parse_comment_block(comment),
-        Comment::Line(comment) => parse_comment_line(comment, context),
-    });
-
-    fn parse_comment_block(comment: &CommentBlock) -> PrintItems {
-        let mut items = PrintItems::new();
-        items.push_str("/*");
-        items.extend(parser_helpers::parse_raw_string(comment.text));
-        items.push_str("*/");
-        items
-    }
-
-    fn parse_comment_line(comment: &CommentLine, context: &mut Context) -> PrintItems {
-        parser_helpers::parse_js_like_comment_line(&comment.text, context.config.comment_line_force_space_after_slashes)
-    }
+    Some(match comment {
+        Comment::Block(comment) => parser_helpers::parse_js_like_comment_block(&comment.text),
+        Comment::Line(comment) => parser_helpers::parse_js_like_comment_line(&comment.text, context.config.comment_line_force_space_after_slashes),
+    })
 }
 
 fn has_ignore_comment(node: &dyn Ranged, context: &Context) -> bool {
