@@ -1,0 +1,20 @@
+~~ object.preferSingleLine: true, lineWidth: 40 ~~
+== should prefer collapsing the object to a single line ==
+{
+  "prop": {
+    "test": 2,
+  },
+  "prop2": {
+    "testing this out": 2,
+    "testing testing test": 5,
+  }
+}
+
+[expect]
+{
+  "prop": { "test": 2 },
+  "prop2": {
+    "testing this out": 2,
+    "testing testing test": 5
+  }
+}

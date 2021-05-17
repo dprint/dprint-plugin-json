@@ -32,6 +32,8 @@ pub fn resolve_config(config: ConfigKeyMap, global_config: &GlobalConfiguration)
         fill_deno_config(&mut config);
     }
 
+    let prefer_single_line = get_value(&mut config, "preferSingleLine", false, &mut diagnostics);
+
     let resolved_config = Configuration {
         line_width: get_value(&mut config, "lineWidth", global_config.line_width.unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.line_width), &mut diagnostics),
         use_tabs: get_value(&mut config, "useTabs", global_config.use_tabs.unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.use_tabs), &mut diagnostics),
@@ -39,6 +41,8 @@ pub fn resolve_config(config: ConfigKeyMap, global_config: &GlobalConfiguration)
         new_line_kind: get_value(&mut config, "newLineKind", global_config.new_line_kind.unwrap_or(DEFAULT_GLOBAL_CONFIGURATION.new_line_kind), &mut diagnostics),
         comment_line_force_space_after_slashes: get_value(&mut config, "commentLine.forceSpaceAfterSlashes", true, &mut diagnostics),
         ignore_node_comment_text: get_value(&mut config, "ignoreNodeCommentText", String::from("dprint-ignore"), &mut diagnostics),
+        array_prefer_single_line: get_value(&mut config, "array.preferSingleLine", prefer_single_line, &mut diagnostics),
+        object_prefer_single_line: get_value(&mut config, "object.preferSingleLine", prefer_single_line, &mut diagnostics),
     };
 
     diagnostics.extend(get_unknown_property_diagnostics(config));

@@ -11,4 +11,6 @@ pub struct Configuration {
     #[serde(rename = "commentLine.forceSpaceAfterSlashes")]
     pub comment_line_force_space_after_slashes: bool,
     pub ignore_node_comment_text: String,
+    pub array_prefer_single_line: bool,
+    pub object_prefer_single_line: bool,
 }

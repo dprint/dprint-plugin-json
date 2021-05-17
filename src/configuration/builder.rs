@@ -83,6 +83,24 @@ impl ConfigurationBuilder {
         self.insert("ignoreNodeCommentText", value.into())
     }
 
+    /// Whether to make objects and arrays collapse to a single line when below the line width.
+    /// Default: false
+    pub fn prefer_single_line(&mut self, value: bool) -> &mut Self {
+        self.insert("preferSingleLine", value.into())
+    }
+
+    /// Whether to make arrays collapse to a single line when below the line width.
+    /// Default: false
+    pub fn array_prefer_single_line(&mut self, value: bool) -> &mut Self {
+        self.insert("array.preferSingleLine", value.into())
+    }
+
+    /// Whether to make ojects collapse to a single line when below the line width.
+    /// Default: false
+    pub fn object_prefer_single_line(&mut self, value: bool) -> &mut Self {
+        self.insert("object.preferSingleLine", value.into())
+    }
+
     /// Sets the configuration to what is used in Deno.
     pub fn deno(&mut self) -> &mut Self {
         self.line_width(80)
@@ -117,10 +135,13 @@ mod tests {
             .indent_width(4)
             .new_line_kind(NewLineKind::CarriageReturnLineFeed)
             .comment_line_force_space_after_slashes(false)
+            .prefer_single_line(true)
+            .array_prefer_single_line(true)
+            .object_prefer_single_line(false)
             .ignore_node_comment_text("deno-fmt-ignore");
 
         let inner_config = config.get_inner_config();
-        assert_eq!(inner_config.len(), 6);
+        assert_eq!(inner_config.len(), 9);
         let diagnostics = resolve_config(inner_config, &resolve_global_config(HashMap::new()).config).diagnostics;
         assert_eq!(diagnostics.len(), 0);
     }
@@ -157,5 +178,15 @@ mod tests {
         assert_eq!(config.use_tabs, false);
         assert_eq!(config.comment_line_force_space_after_slashes, false);
         assert_eq!(config.ignore_node_comment_text, "deno-fmt-ignore");
+        assert_eq!(config.array_prefer_single_line, false);
+        assert_eq!(config.object_prefer_single_line, false);
+    }
+
+    #[test]
+    fn support_prefer_single_line_config() {
+        let mut config_builder = ConfigurationBuilder::new();
+        let config = config_builder.prefer_single_line(true).build();
+        assert_eq!(config.array_prefer_single_line, true);
+        assert_eq!(config.object_prefer_single_line, true);
     }
 }

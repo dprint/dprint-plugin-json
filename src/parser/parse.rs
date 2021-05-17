@@ -101,7 +101,9 @@ fn parse_node_with_inner<'a>(
 }
 
 fn parse_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintItems {
-    let force_multi_lines = should_break_up_single_line(node, context) || node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line);
+    let force_multi_lines = !context.config.array_prefer_single_line && (
+        should_break_up_single_line(node, context) || node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line)
+    );
 
     parse_surrounded_by_tokens(|context| {
         let mut items = PrintItems::new();
@@ -127,7 +129,9 @@ fn parse_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintI
 }
 
 fn parse_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems {
-    let force_multi_lines = should_break_up_single_line(obj, context) || obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line);
+    let force_multi_lines = !context.config.object_prefer_single_line && (
+        should_break_up_single_line(obj, context) || obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line)
+    );
 
     parse_surrounded_by_tokens(|context| {
         let mut items = PrintItems::new();
