@@ -56,7 +56,7 @@ mod tests {
     fn should_error_on_syntax_diagnostic() {
         let global_config = resolve_global_config(HashMap::new()).config;
         let config = resolve_config(HashMap::new(), &global_config).config;
-        let message = format_text("{ &*&* }", &config).err().unwrap();
+        let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
         assert_eq!(
             message,
             concat!(
