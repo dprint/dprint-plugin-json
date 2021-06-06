@@ -1,10 +1,11 @@
 use dprint_core::formatting::{PrintOptions};
 use dprint_core::configuration::resolve_new_line_kind;
+use dprint_core::types::ErrBox;
 use jsonc_parser::{parse_to_ast, ParseOptions, ParseResult};
 use super::configuration::Configuration;
 use super::parser::parse_items;
 
-pub fn format_text(text: &str, config: &Configuration) -> Result<String, String> {
+pub fn format_text(text: &str, config: &Configuration) -> Result<String, ErrBox> {
     let parse_result = get_parse_result(text)?;
 
     Ok(dprint_core::formatting::format(
@@ -55,7 +56,7 @@ mod tests {
     fn should_error_on_syntax_diagnostic() {
         let global_config = resolve_global_config(HashMap::new()).config;
         let config = resolve_config(HashMap::new(), &global_config).config;
-        let message = format_text("{ &*&* }", &config).err().unwrap();
+        let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
         assert_eq!(
             message,
             concat!(
