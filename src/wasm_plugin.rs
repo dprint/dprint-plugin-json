@@ -29,6 +29,7 @@ impl PluginHandler<Configuration> for JsonPluginHandler {
             version: env!("CARGO_PKG_VERSION").to_string(),
             config_key: "json".to_string(),
             file_extensions: vec!["json".to_string(), "jsonc".to_string()],
+            file_names: vec![],
             help_url: "https://dprint.dev/plugins/json".to_string(),
             config_schema_url: "".to_string(), // none until https://github.com/microsoft/vscode/issues/98443 is resolved
         }
