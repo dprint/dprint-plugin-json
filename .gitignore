@@ -1,3 +1,5 @@
 target
 **/*.rs.bk
 Cargo.lock
+deployment/npm/buffer.generated.js
+deployment/npm/node_modules

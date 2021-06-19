@@ -1,0 +1,28 @@
+{
+  "name": "@dprint/json",
+  "version": "0.0.0",
+  "description": "Wasm buffer for dprint-plugin-json.",
+  "main": "./index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dprint/dprint-plugin-json.git"
+  },
+  "keywords": [
+    "json",
+    "code",
+    "formatter",
+    "dprint"
+  ],
+  "author": "David Sherret",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dprint/dprint-plugin-json/issues"
+  },
+  "homepage": "https://github.com/dprint/dprint-plugin-json#readme",
+  "scripts": {
+    "test": "node index.test.js"
+  },
+  "devDependencies": {
+    "@dprint/formatter": "~0.1.4"
+  }
+}
