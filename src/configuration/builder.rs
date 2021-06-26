@@ -3,7 +3,7 @@ use dprint_core::configuration::{GlobalConfiguration, resolve_global_config, New
 
 use super::*;
 
-/// Markdown formatting configuration builder.
+/// Formatting configuration builder.
 ///
 /// # Example
 ///
