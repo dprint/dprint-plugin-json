@@ -1,0 +1,119 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://plugins.dprint.dev/schemas/json-0.0.0.json",
+  "type": "object",
+  "definitions": {
+    "useTabs": {
+      "description": "Whether to use tabs (true) or spaces (false).",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    },
+    "newLineKind": {
+      "description": "The kind of newline to use.",
+      "type": "string",
+      "default": "lf",
+      "oneOf": [{
+        "const": "auto",
+        "description": "For each file, uses the newline kind found at the end of the last line."
+      }, {
+        "const": "crlf",
+        "description": "Uses carriage return, line feed."
+      }, {
+        "const": "lf",
+        "description": "Uses line feed."
+      }, {
+        "const": "system",
+        "description": "Uses the system standard (ex. crlf on Windows)."
+      }]
+    },
+    "commentLine.forceSpaceAfterSlashes": {
+      "description": "Forces a space after slashes.  For example: `// comment` instead of `//comment`",
+      "type": "boolean",
+      "default": true,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    },
+    "preferSingleLine": {
+      "description": "If arrays and objects should collapse to a single line if it would be below the line width.",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    },
+    "deno": {
+      "description": "Top level configuration that sets the configuration to what is used in Deno.",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    }
+  },
+  "properties": {
+    "$schema": {
+      "description": "The JSON schema reference.",
+      "type": "string"
+    },
+    "locked": {
+      "description": "Whether the configuration is not allowed to be overriden or extended.",
+      "type": "boolean"
+    },
+    "lineWidth": {
+      "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
+      "default": 120,
+      "type": "number"
+    },
+    "indentWidth": {
+      "description": "The number of characters for an indent.",
+      "default": 2,
+      "type": "number"
+    },
+    "useTabs": {
+      "$ref": "#/definitions/useTabs"
+    },
+    "newLineKind": {
+      "$ref": "#/definitions/newLineKind"
+    },
+    "commentLine.forceSpaceAfterSlashes": {
+      "$ref": "#/definitions/commentLine.forceSpaceAfterSlashes"
+    },
+    "preferSingleLine": {
+      "$ref": "#/definitions/preferSingleLine"
+    },
+    "array.preferSingleLine": {
+      "$ref": "#/definitions/preferSingleLine"
+    },
+    "object.preferSingleLine": {
+      "$ref": "#/definitions/preferSingleLine"
+    },
+    "deno": {
+      "$ref": "#/definitions/deno"
+    },
+    "ignoreNodeCommentText": {
+      "description": "The text to use for an ignore comment (ex. `// dprint-ignore`).",
+      "default": "dprint-ignore",
+      "type": "string"
+    }
+  }
+}
