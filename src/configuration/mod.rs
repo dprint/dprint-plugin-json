@@ -1,7 +1,7 @@
 mod builder;
-mod resolve_config;
 mod configuration;
+mod resolve_config;
 
 pub use builder::*;
-pub use resolve_config::*;
 pub use configuration::*;
+pub use resolve_config::*;
