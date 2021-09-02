@@ -91,7 +91,7 @@ fn parse_node_with_inner<'a>(
       Node::Array(node) => parse_array(node, context),
       Node::BooleanLit(node) => node.value.to_string().into(),
       Node::NullKeyword(_) => "null".into(),
-      Node::NumberLit(node) => node.value.into(),
+      Node::NumberLit(node) => node.value.to_string().into(),
       Node::Object(node) => parse_object(node, context),
       Node::ObjectProp(node) => parse_object_prop(node, context),
       Node::StringLit(node) => parse_string_lit(node, context),
@@ -188,7 +188,7 @@ fn parse_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> P
     text.replace("\\'", "'")
   };
   items.push_str("\"");
-  items.push_str(&text.replace("\"", "\\\""));
+  items.push_string(text.replace("\"", "\\\""));
   items.push_str("\"");
   items
 }

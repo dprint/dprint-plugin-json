@@ -12,7 +12,7 @@ use dprint_core::configuration::*;
 /// use dprint_plugin_json::configuration::{resolve_config};
 ///
 /// let config_map = HashMap::new(); // get a collection of key value pairs from somewhere
-/// let global_config_result = resolve_global_config(config_map);
+/// let global_config_result = resolve_global_config(config_map, &Default::default());
 ///
 /// // check global_config_result.diagnostics here...
 ///

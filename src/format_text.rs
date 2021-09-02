@@ -51,7 +51,7 @@ mod tests {
 
   #[test]
   fn should_error_on_syntax_diagnostic() {
-    let global_config = resolve_global_config(HashMap::new()).config;
+    let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
     let config = resolve_config(HashMap::new(), &global_config).config;
     let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
     assert_eq!(message, concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~"));
