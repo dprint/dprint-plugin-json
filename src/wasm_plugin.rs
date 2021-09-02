@@ -19,14 +19,15 @@ impl PluginHandler<Configuration> for JsonPluginHandler {
   }
 
   fn get_plugin_info(&mut self) -> PluginInfo {
+    let version = env!("CARGO_PKG_VERSION").to_string();
     PluginInfo {
       name: env!("CARGO_PKG_NAME").to_string(),
-      version: env!("CARGO_PKG_VERSION").to_string(),
+      version: version.clone(),
       config_key: "json".to_string(),
       file_extensions: vec!["json".to_string(), "jsonc".to_string()],
       file_names: vec![],
       help_url: "https://dprint.dev/plugins/json".to_string(),
-      config_schema_url: "".to_string(), // none until https://github.com/microsoft/vscode/issues/98443 is resolved
+      config_schema_url: format!("https://plugins.dprint.dev/schemas/json-{}.json", version),
     }
   }
 
