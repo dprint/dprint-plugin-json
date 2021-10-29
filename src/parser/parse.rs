@@ -71,7 +71,7 @@ fn parse_node_with_inner<'a>(
     items.push_str(""); // force the current line indentation
     items.extend(inner_parse(parser_helpers::parse_raw_string(node.text(context.text)), context));
   } else {
-    items.extend(inner_parse(parse_node_inner(node.clone(), context), context))
+    items.extend(inner_parse(parse_node_inner(&node, context), context))
   }
 
   // get the trailing comments
@@ -86,7 +86,7 @@ fn parse_node_with_inner<'a>(
   return items;
 
   #[inline]
-  fn parse_node_inner<'a>(node: Node<'a, 'a>, context: &mut Context<'a, '_>) -> PrintItems {
+  fn parse_node_inner<'a>(node: &Node<'a, 'a>, context: &mut Context<'a, '_>) -> PrintItems {
     match node {
       Node::Array(node) => parse_array(node, context),
       Node::BooleanLit(node) => node.value.to_string().into(),
