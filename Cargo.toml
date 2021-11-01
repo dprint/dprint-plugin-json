@@ -1,6 +1,6 @@
 [package]
 name = "dprint-plugin-json"
-version = "0.13.1"
+version = "0.13.2"
 authors = ["David Sherret <dsherret@gmail.com>"]
 edition = "2021"
 homepage = "https://github.com/dprint/dprint-plugin-json"
@@ -25,7 +25,7 @@ wasm = ["serde_json", "dprint-core/wasm"]
 tracing = ["dprint-core/tracing"]
 
 [dependencies]
-dprint-core = { version = "0.47.0", features = ["formatting"] }
+dprint-core = { version = "0.47.1", features = ["formatting"] }
 jsonc-parser = { version = "0.17.0" }
 serde = { version = "1.0.88", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
