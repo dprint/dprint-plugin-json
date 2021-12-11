@@ -58,4 +58,12 @@ mod tests {
     let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
     assert_eq!(message, concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~"));
   }
+
+  #[test]
+  fn no_panic_diagnostic_at_multibyte_char() {
+    let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
+    let config = resolve_config(HashMap::new(), &global_config).config;
+    let message = format_text("{ \"a\":\u{200b}5 }", &config).err().unwrap().to_string();
+    assert_eq!(message, "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~");
+  }
 }
