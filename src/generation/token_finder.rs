@@ -30,18 +30,23 @@ struct LocalTokenCollection<'a>(&'a Vec<TokenAndRange<'a>>);
 impl<'a> TokenCollection<'a> for LocalTokenCollection<'a> {
   type TPos = usize;
   type TToken = TokenAndRange<'a>;
+
   fn get_start_at_index(&self, index: usize) -> usize {
-    self.0[index].range.start
+    self.0[index].start()
   }
+
   fn get_end_at_index(&self, index: usize) -> usize {
-    self.0[index].range.end
+    self.0[index].end()
   }
+
   fn get_token_at_index(&self, index: usize) -> &'a TokenAndRange {
     &self.0[index]
   }
+
   fn len(&self) -> usize {
     self.0.len()
   }
+
   fn is_empty(&self) -> bool {
     self.0.is_empty()
   }

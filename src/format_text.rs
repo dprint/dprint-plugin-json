@@ -28,7 +28,7 @@ fn get_parse_result<'a>(text: &'a str) -> Result<ParseResult<'a>> {
   match parse_result {
     Ok(result) => Ok(result),
     Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
-      Some((err.range.start, err.range.end)),
+      Some((err.range.start.index, err.range.end.index)),
       &err.message,
       text,
     )),

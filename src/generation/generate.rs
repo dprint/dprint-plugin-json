@@ -102,7 +102,7 @@ fn gen_node_with_inner<'a>(
 
 fn gen_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintItems {
   let force_multi_lines = !context.config.array_prefer_single_line
-    && (should_break_up_single_line(node, context) || node.range.start_line < node.elements.first().map(|p| p.start_line()).unwrap_or(node.range.start_line));
+    && (should_break_up_single_line(node, context) || node.start_line() < node.elements.first().map(|p| p.start_line()).unwrap_or(node.start_line()));
 
   gen_surrounded_by_tokens(
     |context| {
@@ -136,7 +136,7 @@ fn gen_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintIte
 
 fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems {
   let force_multi_lines = !context.config.object_prefer_single_line
-    && (should_break_up_single_line(obj, context) || obj.range.start_line < obj.properties.first().map(|p| p.range.start_line).unwrap_or(obj.range.end_line));
+    && (should_break_up_single_line(obj, context) || obj.start_line() < obj.properties.first().map(|p| p.start_line()).unwrap_or(obj.end_line()));
 
   gen_surrounded_by_tokens(
     |context| {
@@ -309,24 +309,24 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   opts: GenSurroundedByTokensOptions<'a>,
   context: &mut Context<'a, 'b>,
 ) -> PrintItems {
-  let open_token_end = Position::new(opts.range.start + opts.open_token.len(), opts.range.start_line);
-  let close_token_start = Position::new(opts.range.end - opts.close_token.len(), opts.range.end_line);
+  let open_token_end = Position::new(opts.range.start.index + opts.open_token.len(), opts.range.start.line);
+  let close_token_start = Position::new(opts.range.end.index - opts.close_token.len(), opts.range.end.line);
 
   // assert the tokens are in the place the caller says they are
   #[cfg(debug_assertions)]
-  context.assert_text(opts.range.start, open_token_end.range.end, opts.open_token);
+  context.assert_text(opts.range.start.index, open_token_end.index, opts.open_token);
   #[cfg(debug_assertions)]
-  context.assert_text(close_token_start.range.start, opts.range.end, opts.close_token);
+  context.assert_text(close_token_start.index, opts.range.end.index, opts.close_token);
 
   // generate
   let mut items = PrintItems::new();
-  let open_token_start_line = opts.range.start_line;
+  let open_token_start_line = opts.range.start.line;
 
   items.push_str(opts.open_token);
   if let Some(first_member) = opts.first_member {
-    let first_member_start_line = first_member.start_line;
+    let first_member_start_line = first_member.start.line;
     if open_token_start_line < first_member_start_line {
-      if let Some(trailing_comments) = context.comments.get(&open_token_end.start()) {
+      if let Some(trailing_comments) = context.comments.get(&open_token_end.index) {
         items.extend(gen_first_line_trailing_comment(open_token_start_line, trailing_comments.iter(), context));
       }
     }
@@ -334,8 +334,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
 
     let before_trailing_comments_info = Info::new("beforeTrailingComments");
     items.push_info(before_trailing_comments_info);
-    items.extend(ir_helpers::with_indent(gen_trailing_comments_as_statements(&open_token_end, context)));
-    if let Some(leading_comments) = context.comments.get(&close_token_start.start()) {
+    items.extend(ir_helpers::with_indent(gen_trailing_comments_as_statements(
+      &open_token_end.as_range(),
+      context,
+    )));
+    if let Some(leading_comments) = context.comments.get(&close_token_start.index) {
       items.extend(ir_helpers::with_indent(gen_comments_as_statements(leading_comments.iter(), None, context)));
     }
     items.push_condition(conditions::if_true(
@@ -347,8 +350,8 @@ fn gen_surrounded_by_tokens<'a, 'b>(
       Signal::NewLine.into(),
     ));
   } else {
-    let is_single_line = open_token_start_line == opts.range.end_line;
-    if let Some(comments) = context.comments.get(&open_token_end.start()) {
+    let is_single_line = open_token_start_line == opts.range.end.line;
+    if let Some(comments) = context.comments.get(&open_token_end.index) {
       // generate the trailing comment on the first line only if multi-line and if a comment line
       if !is_single_line {
         items.extend(gen_first_line_trailing_comment(open_token_start_line, comments.iter(), context));
@@ -628,5 +631,5 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // Obviously this line_width * 2 is not always accurate as it doesn't take into account whitespace,
   // but will provide a good enough and fast way to quickly tell if it's long without having basically
   // any false positives (unless someone is being silly).
-  range.start_line == range.end_line && range.width() > (context.config.line_width * 2) as usize
+  range.start.line == range.end.line && range.width() > (context.config.line_width * 2) as usize
 }
