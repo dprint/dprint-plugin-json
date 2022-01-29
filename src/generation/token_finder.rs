@@ -7,7 +7,7 @@ pub struct TokenFinder<'a> {
 }
 
 impl<'a> TokenFinder<'a> {
-  pub fn new(tokens: &'a Vec<TokenAndRange<'a>>) -> TokenFinder<'a> {
+  pub fn new(tokens: &'a [TokenAndRange<'a>]) -> TokenFinder<'a> {
     TokenFinder {
       inner: CoreTokenFinder::new(LocalTokenCollection(tokens)),
     }
@@ -25,7 +25,7 @@ impl<'a> TokenFinder<'a> {
 
 // Wrap and implement a trait for the CoreTokenFinder
 
-struct LocalTokenCollection<'a>(&'a Vec<TokenAndRange<'a>>);
+struct LocalTokenCollection<'a>(&'a [TokenAndRange<'a>]);
 
 impl<'a> TokenCollection<'a> for LocalTokenCollection<'a> {
   type TPos = usize;

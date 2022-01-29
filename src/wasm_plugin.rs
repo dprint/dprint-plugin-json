@@ -28,7 +28,8 @@ impl PluginHandler<Configuration> for JsonPluginHandler {
       file_extensions: vec!["json".to_string(), "jsonc".to_string()],
       file_names: vec![],
       help_url: "https://dprint.dev/plugins/json".to_string(),
-      config_schema_url: format!("https://plugins.dprint.dev/schemas/json-{}.json", version),
+      config_schema_url: format!("https://plugins.dprint.dev/dprint/dprint-plugin-json/{}/schema.json", version),
+      update_url: Some("https://plugins.dprint.dev/dprint/dprint-plugin-json/latest.json".to_string()),
     }
   }
 

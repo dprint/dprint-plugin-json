@@ -23,7 +23,7 @@ pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting
   dprint_core::formatting::trace_printing(|| generate(parse_result, text, config), config_to_print_options(text, config))
 }
 
-fn get_parse_result<'a>(text: &'a str) -> Result<ParseResult<'a>> {
+fn get_parse_result(text: &str) -> Result<ParseResult<'_>> {
   let parse_result = parse_to_ast(text, &ParseOptions { comments: true, tokens: true });
   match parse_result {
     Ok(result) => Ok(result),
