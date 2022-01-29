@@ -3,17 +3,21 @@ use super::context::Context;
 use super::token_finder::TokenFinder;
 use dprint_core::formatting::*;
 use jsonc_parser::ast::*;
-use jsonc_parser::common::{Position, Range, Ranged};
+use jsonc_parser::common::Range;
+use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::TokenAndRange;
 use std::collections::HashSet;
+use text_lines::TextLines;
 
 pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
   let node_value = parse_result.value;
+  let text_info = TextLines::new(&text);
   let mut context = Context {
     config,
     text,
+    text_info,
     handled_comments: HashSet::new(),
     parent_stack: Vec::new(),
     current_node: None,
@@ -102,7 +106,13 @@ fn gen_node_with_inner<'a>(
 
 fn gen_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintItems {
   let force_multi_lines = !context.config.array_prefer_single_line
-    && (should_break_up_single_line(node, context) || node.start_line() < node.elements.first().map(|p| p.start_line()).unwrap_or(node.start_line()));
+    && (should_break_up_single_line(node, context)
+      || context.text_info.line_index(node.start())
+        < node
+          .elements
+          .first()
+          .map(|p| context.text_info.line_index(p.start()))
+          .unwrap_or_else(|| context.text_info.line_index(node.start())));
 
   gen_surrounded_by_tokens(
     |context| {
@@ -136,7 +146,13 @@ fn gen_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintIte
 
 fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems {
   let force_multi_lines = !context.config.object_prefer_single_line
-    && (should_break_up_single_line(obj, context) || obj.start_line() < obj.properties.first().map(|p| p.start_line()).unwrap_or(obj.end_line()));
+    && (should_break_up_single_line(obj, context)
+      || context.text_info.line_index(obj.start())
+        < obj
+          .properties
+          .first()
+          .map(|p| context.text_info.line_index(p.start()))
+          .unwrap_or_else(|| context.text_info.line_index(obj.end())));
 
   gen_surrounded_by_tokens(
     |context| {
@@ -309,24 +325,24 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   opts: GenSurroundedByTokensOptions<'a>,
   context: &mut Context<'a, 'b>,
 ) -> PrintItems {
-  let open_token_end = Position::new(opts.range.start.index + opts.open_token.len(), opts.range.start.line);
-  let close_token_start = Position::new(opts.range.end.index - opts.close_token.len(), opts.range.end.line);
+  let open_token_end = opts.range.start + opts.open_token.len();
+  let close_token_start = opts.range.end - opts.close_token.len();
 
   // assert the tokens are in the place the caller says they are
   #[cfg(debug_assertions)]
-  context.assert_text(opts.range.start.index, open_token_end.index, opts.open_token);
+  context.assert_text(opts.range.start, open_token_end, opts.open_token);
   #[cfg(debug_assertions)]
-  context.assert_text(close_token_start.index, opts.range.end.index, opts.close_token);
+  context.assert_text(close_token_start, opts.range.end, opts.close_token);
 
   // generate
   let mut items = PrintItems::new();
-  let open_token_start_line = opts.range.start.line;
+  let open_token_start_line = context.text_info.line_index(opts.range.start);
 
   items.push_str(opts.open_token);
   if let Some(first_member) = opts.first_member {
-    let first_member_start_line = first_member.start.line;
+    let first_member_start_line = context.text_info.line_index(first_member.start);
     if open_token_start_line < first_member_start_line {
-      if let Some(trailing_comments) = context.comments.get(&open_token_end.index) {
+      if let Some(trailing_comments) = context.comments.get(&open_token_end) {
         items.extend(gen_first_line_trailing_comment(open_token_start_line, trailing_comments.iter(), context));
       }
     }
@@ -335,10 +351,10 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     let before_trailing_comments_info = Info::new("beforeTrailingComments");
     items.push_info(before_trailing_comments_info);
     items.extend(ir_helpers::with_indent(gen_trailing_comments_as_statements(
-      &open_token_end.as_range(),
+      &Range::from_byte_index(open_token_end),
       context,
     )));
-    if let Some(leading_comments) = context.comments.get(&close_token_start.index) {
+    if let Some(leading_comments) = context.comments.get(&close_token_start) {
       items.extend(ir_helpers::with_indent(gen_comments_as_statements(leading_comments.iter(), None, context)));
     }
     items.push_condition(conditions::if_true(
@@ -350,8 +366,9 @@ fn gen_surrounded_by_tokens<'a, 'b>(
       Signal::NewLine.into(),
     ));
   } else {
-    let is_single_line = open_token_start_line == opts.range.end.line;
-    if let Some(comments) = context.comments.get(&open_token_end.index) {
+    let range_end_line = context.text_info.line_index(opts.range.end);
+    let is_single_line = open_token_start_line == range_end_line;
+    if let Some(comments) = context.comments.get(&open_token_end) {
       // generate the trailing comment on the first line only if multi-line and if a comment line
       if !is_single_line {
         items.extend(gen_first_line_trailing_comment(open_token_start_line, comments.iter(), context));
@@ -366,8 +383,8 @@ fn gen_surrounded_by_tokens<'a, 'b>(
               |_| {
                 let mut generated_comments = Vec::new();
                 for c in comments.iter() {
-                  let start_line = c.start_line();
-                  let end_line = c.end_line();
+                  let start_line = context.text_info.line_index(c.start());
+                  let end_line = context.text_info.line_index(c.end());
                   if let Some(items) = gen_comment(c, context) {
                     generated_comments.push(ir_helpers::GeneratedValue {
                       items,
@@ -418,7 +435,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     let mut items = PrintItems::new();
     let mut comments = comments;
     if let Some(first_comment) = comments.next() {
-      if first_comment.kind() == CommentKind::Line && first_comment.start_line() == open_token_start_line {
+      if first_comment.kind() == CommentKind::Line && context.text_info.line_index(first_comment.start()) == open_token_start_line {
         if let Some(generated_comment) = gen_comment(&first_comment, context) {
           items.push_signal(Signal::StartForceNoNewLines);
           items.push_str(" ");
@@ -452,10 +469,10 @@ fn gen_trailing_comments_as_statements(node: &dyn Ranged, context: &mut Context)
 
 fn get_trailing_comments_as_statements<'a, 'b>(node: &dyn Ranged, context: &mut Context<'a, 'b>) -> Vec<&'b Comment<'a>> {
   let mut comments = Vec::new();
-  let node_end_line = node.end_line();
+  let node_end_line = context.text_info.line_index(node.end());
   if let Some(trailing_comments) = context.comments.get(&node.end()) {
     for comment in trailing_comments.iter() {
-      if !context.has_handled_comment(comment) && node_end_line < comment.end_line() {
+      if !context.has_handled_comment(comment) && node_end_line < context.text_info.line_index(comment.end()) {
         comments.push(comment);
       }
     }
@@ -490,11 +507,11 @@ fn gen_comments_as_leading<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterato
 
   if !comments.is_empty() {
     let last_comment = comments.last().unwrap();
-    let last_comment_end_line = last_comment.end_line();
+    let last_comment_end_line = context.text_info.line_index(last_comment.end());
     let last_comment_kind = last_comment.kind();
     items.extend(gen_comment_collection(comments.into_iter(), None, Some(node), context));
 
-    let node_start_line = node.start_line();
+    let node_start_line = context.text_info.line_index(node.start());
     if node_start_line > last_comment_end_line {
       items.push_signal(Signal::NewLine);
 
@@ -511,8 +528,10 @@ fn gen_comments_as_leading<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterato
 
 fn gen_comments_as_trailing<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterator<Item = &'b Comment<'a>>, context: &mut Context) -> PrintItems {
   // use the roslyn definition of trailing comments
-  let node_end_line = node.end_line();
-  let trailing_comments_on_same_line = comments.filter(|c| c.start_line() <= node_end_line).collect::<Vec<_>>();
+  let node_end_line = context.text_info.line_index(node.end());
+  let trailing_comments_on_same_line = comments
+    .filter(|c| context.text_info.line_index(c.start()) <= node_end_line)
+    .collect::<Vec<_>>();
 
   let first_unhandled_comment = trailing_comments_on_same_line.iter().filter(|c| !context.has_handled_comment(c)).next();
   let mut items = PrintItems::new();
@@ -534,7 +553,7 @@ fn gen_comment_collection<'a: 'b, 'b>(
 ) -> PrintItems {
   let mut last_node = last_node;
   let mut items = PrintItems::new();
-  let next_node_start_line = next_node.map(|n| n.start_line());
+  let next_node_start_line = next_node.map(|n| context.text_info.line_index(n.start()));
 
   for comment in comments {
     if !context.has_handled_comment(comment) {
@@ -543,7 +562,7 @@ fn gen_comment_collection<'a: 'b, 'b>(
         &last_node,
         GenCommentBasedOnLastNodeOptions {
           separate_with_newlines: if let Some(next_node_start_line) = next_node_start_line {
-            comment.start_line() != next_node_start_line
+            context.text_info.line_index(comment.start()) != next_node_start_line
           } else {
             false
           },
@@ -571,8 +590,8 @@ fn gen_comment_based_on_last_node(
   let mut pushed_ignore_new_lines = false;
 
   if let Some(last_node) = last_node {
-    let comment_start_line = comment.start_line();
-    let last_node_end_line = last_node.end_line();
+    let comment_start_line = context.text_info.line_index(comment.start());
+    let last_node_end_line = context.text_info.line_index(last_node.end());
 
     if opts.separate_with_newlines || comment_start_line > last_node_end_line {
       items.push_signal(Signal::NewLine);
@@ -631,5 +650,5 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // Obviously this line_width * 2 is not always accurate as it doesn't take into account whitespace,
   // but will provide a good enough and fast way to quickly tell if it's long without having basically
   // any false positives (unless someone is being silly).
-  range.start.line == range.end.line && range.width() > (context.config.line_width * 2) as usize
+  context.text_info.line_index(range.start) == context.text_info.line_index(range.end) && range.width() > (context.config.line_width * 2) as usize
 }

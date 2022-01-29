@@ -4,10 +4,12 @@ use jsonc_parser::ast::*;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::CommentMap;
 use std::collections::HashSet;
+use text_lines::TextLines;
 
 pub struct Context<'a, 'b> {
   pub config: &'b Configuration,
   pub text: &'b str,
+  pub text_info: TextLines,
   pub handled_comments: HashSet<usize>,
   pub parent_stack: Vec<Node<'a, 'a>>,
   pub current_node: Option<Node<'a, 'a>>,
@@ -32,12 +34,12 @@ impl<'a, 'b> Context<'a, 'b> {
     let start = node.start();
     if let Some(leading_comments) = self.comments.get(&start) {
       if let Some(previous_token) = self.token_finder.get_previous_token(node) {
-        let previous_end_line = previous_token.end_line();
+        let previous_end_line = self.text_info.line_index(previous_token.end());
         let mut past_trailing_comments = false;
         for comment in leading_comments.iter() {
-          let comment_start_line = comment.start_line();
+          let comment_start_line = self.text_info.line_index(comment.start());
           if !past_trailing_comments && comment_start_line <= previous_end_line {
-            let comment_end_line = comment.end_line();
+            let comment_end_line = self.text_info.line_index(comment.end());
             if comment_end_line > previous_end_line {
               past_trailing_comments = true;
             }
@@ -46,12 +48,12 @@ impl<'a, 'b> Context<'a, 'b> {
           }
         }
 
-        node.start_line()
+        self.text_info.line_index(node.start())
       } else {
-        leading_comments.iter().next().unwrap().start_line()
+        self.text_info.line_index(leading_comments.iter().next().unwrap().start())
       }
     } else {
-      node.start_line()
+      self.text_info.line_index(node.start())
     }
   }
 
@@ -60,8 +62,8 @@ impl<'a, 'b> Context<'a, 'b> {
     let (search_end, previous_end_line) = self
       .token_finder
       .get_next_token_if_comma(node)
-      .map(|x| (x.end(), x.end_line()))
-      .unwrap_or((node.end(), node.end_line()));
+      .map(|x| (x.end(), self.text_info.line_index(x.end())))
+      .unwrap_or((node.end(), self.text_info.line_index(node.end())));
 
     if let Some(trailing_comments) = self.comments.get(&search_end) {
       for comment in trailing_comments.iter() {
@@ -70,9 +72,9 @@ impl<'a, 'b> Context<'a, 'b> {
           break;
         }
 
-        let comment_start_line = comment.start_line();
+        let comment_start_line = self.text_info.line_index(comment.start());
         if comment_start_line <= previous_end_line {
-          let comment_end_line = comment.end_line();
+          let comment_end_line = self.text_info.line_index(comment.end());
           if comment_end_line > previous_end_line {
             return comment_end_line; // should only include the first multi-line comment block
           }
