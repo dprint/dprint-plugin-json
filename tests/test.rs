@@ -3,7 +3,6 @@ extern crate dprint_plugin_json;
 
 //#[macro_use] extern crate debug_here;
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 // use std::time::Instant;
 
@@ -15,7 +14,7 @@ use dprint_plugin_json::*;
 #[test]
 fn test_specs() {
   //debug_here!();
-  let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
+  let global_config = GlobalConfiguration::default();
 
   run_specs(
     &PathBuf::from("./tests/specs"),

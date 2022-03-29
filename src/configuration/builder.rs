@@ -1,5 +1,4 @@
 use dprint_core::configuration::{resolve_global_config, ConfigKeyMap, ConfigKeyValue, GlobalConfiguration, NewLineKind};
-use std::collections::HashMap;
 
 use super::*;
 
@@ -31,7 +30,7 @@ impl ConfigurationBuilder {
     if let Some(global_config) = &self.global_config {
       resolve_config(self.config.clone(), global_config).config
     } else {
-      let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
+      let global_config = resolve_global_config(ConfigKeyMap::new(), &Default::default()).config;
       resolve_config(self.config.clone(), &global_config).config
     }
   }
@@ -120,8 +119,8 @@ impl ConfigurationBuilder {
 
 #[cfg(test)]
 mod tests {
-  use dprint_core::configuration::{resolve_global_config, NewLineKind};
-  use std::collections::HashMap;
+  use dprint_core::configuration::resolve_global_config;
+  use dprint_core::configuration::NewLineKind;
 
   use super::*;
 
@@ -142,13 +141,13 @@ mod tests {
 
     let inner_config = config.get_inner_config();
     assert_eq!(inner_config.len(), 9);
-    let diagnostics = resolve_config(inner_config, &resolve_global_config(HashMap::new(), &Default::default()).config).diagnostics;
+    let diagnostics = resolve_config(inner_config, &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config).diagnostics;
     assert_eq!(diagnostics.len(), 0);
   }
 
   #[test]
   fn handle_global_config() {
-    let mut global_config = HashMap::new();
+    let mut global_config = ConfigKeyMap::new();
     global_config.insert(String::from("lineWidth"), 90.into());
     global_config.insert(String::from("newLineKind"), "crlf".into());
     global_config.insert(String::from("useTabs"), true.into());
@@ -161,7 +160,7 @@ mod tests {
 
   #[test]
   fn use_json_defaults_when_global_not_set() {
-    let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
+    let global_config = GlobalConfiguration::default();
     let mut config_builder = ConfigurationBuilder::new();
     let config = config_builder.global_config(global_config).build();
     assert_eq!(config.indent_width, 2); // this is different

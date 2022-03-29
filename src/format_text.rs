@@ -2,18 +2,24 @@ use anyhow::bail;
 use anyhow::Result;
 use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
+use dprint_core::plugins::FormatResult;
 use jsonc_parser::{parse_to_ast, ParseOptions, ParseResult};
 
 use super::configuration::Configuration;
 use super::generation::generate;
 
-pub fn format_text(text: &str, config: &Configuration) -> Result<String> {
+pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
   let parse_result = get_parse_result(text)?;
 
-  Ok(dprint_core::formatting::format(
+  let result = dprint_core::formatting::format(
     || generate(parse_result, text, config),
     config_to_print_options(text, config),
-  ))
+  );
+  if result == text {
+    Ok(None)
+  } else {
+    Ok(Some(result))
+  }
 }
 
 #[cfg(feature = "tracing")]
@@ -49,20 +55,19 @@ mod tests {
   use super::super::configuration::resolve_config;
   use super::*;
   use dprint_core::configuration::*;
-  use std::collections::HashMap;
 
   #[test]
   fn should_error_on_syntax_diagnostic() {
-    let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
-    let config = resolve_config(HashMap::new(), &global_config).config;
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
     let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
     assert_eq!(message, concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~"));
   }
 
   #[test]
   fn no_panic_diagnostic_at_multibyte_char() {
-    let global_config = resolve_global_config(HashMap::new(), &Default::default()).config;
-    let config = resolve_config(HashMap::new(), &global_config).config;
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
     let message = format_text("{ \"a\":\u{200b}5 }", &config).err().unwrap().to_string();
     assert_eq!(message, "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~");
   }

@@ -7,6 +7,7 @@ use jsonc_parser::common::Range;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::TokenAndRange;
 use std::collections::HashSet;
+use std::rc::Rc;
 use text_lines::TextLines;
 
 pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
@@ -34,7 +35,7 @@ pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Co
   }
   items.push_condition(conditions::if_true(
     "endOfFileNewLine",
-    |context| Some(context.writer_info.column_number > 0 || context.writer_info.line_number > 0),
+    Rc::new(|context| Some(context.writer_info.column_number > 0 || context.writer_info.line_number > 0)),
     Signal::NewLine.into(),
   ));
 
@@ -357,10 +358,10 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     }
     items.push_condition(conditions::if_true(
       "newLineIfHasCommentsAndNotStartOfNewLine",
-      move |context| {
-        let had_comments = !condition_resolvers::is_at_same_position(context, &before_trailing_comments_info)?;
+      Rc::new(move |context| {
+        let had_comments = !condition_helpers::is_at_same_position(context, &before_trailing_comments_info)?;
         Some(had_comments && !context.writer_info.is_start_of_line())
-      },
+      }),
       Signal::NewLine.into(),
     ));
   } else {
