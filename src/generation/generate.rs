@@ -347,8 +347,8 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     }
     items.extend(gen_inner(context));
 
-    let before_trailing_comments_info = Info::new("beforeTrailingComments");
-    items.push_info(before_trailing_comments_info);
+    let before_trailing_comments_lc = LineAndColumn::new("beforeTrailingComments");
+    items.push_line_and_column(before_trailing_comments_lc);
     items.extend(ir_helpers::with_indent(gen_trailing_comments_as_statements(
       &Range::from_byte_index(open_token_end),
       context,
@@ -359,7 +359,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     items.push_condition(conditions::if_true(
       "newLineIfHasCommentsAndNotStartOfNewLine",
       Rc::new(move |context| {
-        let had_comments = !condition_helpers::is_at_same_position(context, &before_trailing_comments_info)?;
+        let had_comments = !condition_helpers::is_at_same_position(context, before_trailing_comments_lc)?;
         Some(had_comments && !context.writer_info.is_start_of_line())
       }),
       Signal::NewLine.into(),
