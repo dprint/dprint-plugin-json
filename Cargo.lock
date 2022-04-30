@@ -83,9 +83,9 @@ dependencies = [
 
 [[package]]
 name = "dprint-core"
-version = "0.55.0"
+version = "0.56.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb98d240e58a9b47037f01c585bf1c91858ba8412e38283e004cb847377ce56e"
+checksum = "4f2e06453dc1b63189dcfb0aae5bb98ad05f0d0d4f7e1647473f85921fcd1412"
 dependencies = [
  "anyhow",
  "bumpalo",
@@ -108,7 +108,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-json"
-version = "0.15.1"
+version = "0.15.2"
 dependencies = [
  "anyhow",
  "debug-here",
