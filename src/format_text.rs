@@ -3,18 +3,17 @@ use anyhow::Result;
 use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
 use dprint_core::plugins::FormatResult;
-use jsonc_parser::{parse_to_ast, ParseOptions, ParseResult};
+use jsonc_parser::parse_to_ast;
+use jsonc_parser::CollectOptions;
+use jsonc_parser::ParseResult;
 
 use super::configuration::Configuration;
 use super::generation::generate;
 
 pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
-  let parse_result = get_parse_result(text)?;
+  let parse_result = parse(text)?;
 
-  let result = dprint_core::formatting::format(
-    || generate(parse_result, text, config),
-    config_to_print_options(text, config),
-  );
+  let result = dprint_core::formatting::format(|| generate(parse_result, text, config), config_to_print_options(text, config));
   if result == text {
     Ok(None)
   } else {
@@ -24,13 +23,13 @@ pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
 
 #[cfg(feature = "tracing")]
 pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting::TracingResult {
-  let parse_result = get_parse_result(text).unwrap();
+  let parse_result = parse(text).unwrap();
 
   dprint_core::formatting::trace_printing(|| generate(parse_result, text, config), config_to_print_options(text, config))
 }
 
-fn get_parse_result(text: &str) -> Result<ParseResult<'_>> {
-  let parse_result = parse_to_ast(text, &ParseOptions { comments: true, tokens: true });
+fn parse(text: &str) -> Result<ParseResult<'_>> {
+  let parse_result = parse_to_ast(text, &CollectOptions { comments: true, tokens: true }, &Default::default());
   match parse_result {
     Ok(result) => Ok(result),
     Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
