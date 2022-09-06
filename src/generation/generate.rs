@@ -203,7 +203,7 @@ fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> Pri
     text.replace("\\'", "'")
   };
   items.push_str("\"");
-  items.push_string(text.replace("\"", "\\\""));
+  items.push_string(text.replace('"', "\\\""));
   items.push_str("\"");
   items
 }
@@ -212,7 +212,7 @@ fn gen_word_lit<'a>(node: &'a WordLit<'a>, _: &mut Context<'a, '_>) -> PrintItem
   // this will be a property name that's not a string literal
   let mut items = PrintItems::new();
   items.push_str("\"");
-  items.push_str(node.value);
+  items.push_string(node.value.to_string());
   items.push_str("\"");
   items
 }
@@ -631,7 +631,7 @@ fn gen_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems> {
 }
 
 fn has_ignore_comment(node: &dyn Ranged, context: &Context) -> bool {
-  if let Some(last_comment) = context.comments.get(&(node.start())).map(|c| c.last()).flatten() {
+  if let Some(last_comment) = context.comments.get(&(node.start())).and_then(|c| c.last()) {
     ir_helpers::text_has_dprint_ignore(last_comment.text(), &context.config.ignore_node_comment_text)
   } else {
     false
