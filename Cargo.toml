@@ -1,6 +1,6 @@
 [package]
 name = "dprint-plugin-json"
-version = "0.15.5"
+version = "0.15.6"
 authors = ["David Sherret <dsherret@gmail.com>"]
 edition = "2021"
 homepage = "https://github.com/dprint/dprint-plugin-json"
