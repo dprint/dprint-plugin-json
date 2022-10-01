@@ -1,7 +1,7 @@
 {
   "name": "@dprint/json",
   "version": "0.0.0",
-  "description": "Wasm buffer for dprint-plugin-json.",
+  "description": "Wasm module for dprint-plugin-json.",
   "main": "./index.js",
   "types": "./index.d.ts",
   "repository": {
