@@ -1,3 +1,4 @@
+~~ lineWidth: 80 ~~
 == should support single quote strings ==
 'te\'st'
 
@@ -15,3 +16,17 @@
 
 [expect]
 "asdf\tasdf\f\b\u0020\r\n\r\r"
+
+== should use unicode standard annex #11 rules for line width ==
+{
+  "a": ["대충 한국어로 아무 말이나 적고 있습니다. '아무말'은 표준국어대사전에"],
+  "b": ["대충 한국어로 아무 말이나 적고 있습니다. '아무말'은 표준국어대사전에  "]
+}
+
+[expect]
+{
+  "a": ["대충 한국어로 아무 말이나 적고 있습니다. '아무말'은 표준국어대사전에"],
+  "b": [
+    "대충 한국어로 아무 말이나 적고 있습니다. '아무말'은 표준국어대사전에  "
+  ]
+}
