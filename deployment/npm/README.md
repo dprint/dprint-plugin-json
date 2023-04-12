@@ -11,7 +11,7 @@ import { createFromBuffer } from "@dprint/formatter";
 import { getBuffer } from "@dprint/json";
 import * as fs from "fs";
 
-const buffer = fs.readFileSync(getPath());
+const buffer = getBuffer();
 const formatter = createFromBuffer(buffer);
 
 console.log(formatter.formatText("test.json", "{test: 5}"));
