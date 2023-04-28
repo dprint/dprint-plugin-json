@@ -39,7 +39,7 @@ impl<'a> TokenCollection<'a> for LocalTokenCollection<'a> {
     self.0[index].end()
   }
 
-  fn get_token_at_index(&self, index: usize) -> &'a TokenAndRange {
+  fn get_token_at_index(&self, index: usize) -> &'a TokenAndRange<'a> {
     &self.0[index]
   }
 
