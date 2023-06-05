@@ -13,7 +13,10 @@ use super::generation::generate;
 pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
   let parse_result = parse(text)?;
 
-  let result = dprint_core::formatting::format(|| generate(parse_result, text, config), config_to_print_options(text, config));
+  let result = dprint_core::formatting::format(
+    || generate(parse_result, text, config),
+    config_to_print_options(text, config),
+  );
   if result == text {
     Ok(None)
   } else {
@@ -25,11 +28,21 @@ pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
 pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting::TracingResult {
   let parse_result = parse(text).unwrap();
 
-  dprint_core::formatting::trace_printing(|| generate(parse_result, text, config), config_to_print_options(text, config))
+  dprint_core::formatting::trace_printing(
+    || generate(parse_result, text, config),
+    config_to_print_options(text, config),
+  )
 }
 
 fn parse(text: &str) -> Result<ParseResult<'_>> {
-  let parse_result = parse_to_ast(text, &CollectOptions { comments: true, tokens: true }, &Default::default());
+  let parse_result = parse_to_ast(
+    text,
+    &CollectOptions {
+      comments: true,
+      tokens: true,
+    },
+    &Default::default(),
+  );
   match parse_result {
     Ok(result) => Ok(result),
     Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
@@ -60,7 +73,10 @@ mod tests {
     let global_config = GlobalConfiguration::default();
     let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
     let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
-    assert_eq!(message, concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~"));
+    assert_eq!(
+      message,
+      concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~")
+    );
   }
 
   #[test]
@@ -68,6 +84,9 @@ mod tests {
     let global_config = GlobalConfiguration::default();
     let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
     let message = format_text("{ \"a\":\u{200b}5 }", &config).err().unwrap().to_string();
-    assert_eq!(message, "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~");
+    assert_eq!(
+      message,
+      "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~"
+    );
   }
 }

@@ -19,7 +19,11 @@ impl JsonPluginHandler {
 }
 
 impl SyncPluginHandler<Configuration> for JsonPluginHandler {
-  fn resolve_config(&mut self, config: ConfigKeyMap, global_config: &GlobalConfiguration) -> ResolveConfigurationResult<Configuration> {
+  fn resolve_config(
+    &mut self,
+    config: ConfigKeyMap,
+    global_config: &GlobalConfiguration,
+  ) -> ResolveConfigurationResult<Configuration> {
     resolve_config(config, global_config)
   }
 
@@ -32,7 +36,10 @@ impl SyncPluginHandler<Configuration> for JsonPluginHandler {
       file_extensions: vec!["json".to_string(), "jsonc".to_string()],
       file_names: vec![],
       help_url: "https://dprint.dev/plugins/json".to_string(),
-      config_schema_url: format!("https://plugins.dprint.dev/dprint/dprint-plugin-json/{}/schema.json", version),
+      config_schema_url: format!(
+        "https://plugins.dprint.dev/dprint/dprint-plugin-json/{}/schema.json",
+        version
+      ),
       update_url: Some("https://plugins.dprint.dev/dprint/dprint-plugin-json/latest.json".to_string()),
     }
   }

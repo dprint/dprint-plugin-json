@@ -14,7 +14,9 @@ impl<'a> TokenFinder<'a> {
   }
 
   pub fn get_next_token_if_comma(&mut self, node: &dyn Ranged) -> Option<&'a TokenAndRange<'a>> {
-    self.inner.get_next_token_if(node.end(), |token| token.token == Token::Comma)
+    self
+      .inner
+      .get_next_token_if(node.end(), |token| token.token == Token::Comma)
   }
 
   #[inline]

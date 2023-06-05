@@ -1,6 +1,7 @@
 use super::super::configuration::Configuration;
 use super::context::Context;
 use super::token_finder::TokenFinder;
+use dprint_core::formatting::ir_helpers::SingleLineOptions;
 use dprint_core::formatting::*;
 use jsonc_parser::ast::*;
 use jsonc_parser::common::Range;
@@ -72,7 +73,10 @@ fn gen_node_with_inner<'a>(
   // generate the node
   if has_ignore_comment(&node, context) {
     items.push_str(""); // force the current line indentation
-    items.extend(inner_gen(ir_helpers::gen_from_raw_string(node.text(context.text)), context));
+    items.extend(inner_gen(
+      ir_helpers::gen_from_raw_string(node.text(context.text)),
+      context,
+    ));
   } else {
     items.extend(inner_gen(gen_node_inner(&node, context), context))
   }
@@ -229,7 +233,10 @@ struct GenCommaSeparatedValuesOptions<'a> {
   force_possible_newline_at_start: bool,
 }
 
-fn gen_comma_separated_values<'a>(opts: GenCommaSeparatedValuesOptions<'a>, context: &mut Context<'a, '_>) -> PrintItems {
+fn gen_comma_separated_values<'a>(
+  opts: GenCommaSeparatedValuesOptions<'a>,
+  context: &mut Context<'a, '_>,
+) -> PrintItems {
   let nodes = opts.nodes;
   let indent_width = context.config.indent_width;
   let compute_lines_span = opts.allow_blank_lines && opts.force_use_new_lines; // save time otherwise
@@ -252,7 +259,11 @@ fn gen_comma_separated_values<'a>(opts: GenCommaSeparatedValuesOptions<'a>, cont
           None
         };
         let items = ir_helpers::new_line_group({
-          let generated_comma = if i == nodes_count - 1 { PrintItems::new() } else { ",".into() };
+          let generated_comma = if i == nodes_count - 1 {
+            PrintItems::new()
+          } else {
+            ",".into()
+          };
           gen_comma_separated_value(value, generated_comma, context)
         });
         generated_nodes.push(ir_helpers::GeneratedValue {
@@ -269,9 +280,13 @@ fn gen_comma_separated_values<'a>(opts: GenCommaSeparatedValuesOptions<'a>, cont
       prefer_hanging: opts.prefer_hanging,
       force_use_new_lines: opts.force_use_new_lines,
       allow_blank_lines: opts.allow_blank_lines,
-      single_line_space_at_start: opts.single_line_space_at_start,
-      single_line_space_at_end: opts.single_line_space_at_end,
-      single_line_separator: opts.custom_single_line_separator.unwrap_or_else(|| Signal::SpaceOrNewLine.into()),
+      single_line_options: SingleLineOptions {
+        space_at_start: opts.single_line_space_at_start,
+        space_at_end: opts.single_line_space_at_end,
+        separator: opts
+          .custom_single_line_separator
+          .unwrap_or_else(|| Signal::SpaceOrNewLine.into()),
+      },
       indent_width,
       multi_line_options: opts.multi_line_options,
       force_possible_newline_at_start: opts.force_possible_newline_at_start,
@@ -280,7 +295,11 @@ fn gen_comma_separated_values<'a>(opts: GenCommaSeparatedValuesOptions<'a>, cont
   .items
 }
 
-fn gen_comma_separated_value<'a>(value: Option<Node<'a, 'a>>, generated_comma: PrintItems, context: &mut Context<'a, '_>) -> PrintItems {
+fn gen_comma_separated_value<'a>(
+  value: Option<Node<'a, 'a>>,
+  generated_comma: PrintItems,
+  context: &mut Context<'a, '_>,
+) -> PrintItems {
   let mut items = PrintItems::new();
   let comma_token = get_comma_token(&value, context);
 
@@ -342,7 +361,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     let first_member_start_line = context.text_info.line_index(first_member.start);
     if open_token_start_line < first_member_start_line {
       if let Some(trailing_comments) = context.comments.get(&open_token_end) {
-        items.extend(gen_first_line_trailing_comment(open_token_start_line, trailing_comments.iter(), context));
+        items.extend(gen_first_line_trailing_comment(
+          open_token_start_line,
+          trailing_comments.iter(),
+          context,
+        ));
       }
     }
     items.extend(gen_inner(context));
@@ -354,7 +377,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
       context,
     )));
     if let Some(leading_comments) = context.comments.get(&close_token_start) {
-      items.extend(ir_helpers::with_indent(gen_comments_as_statements(leading_comments.iter(), None, context)));
+      items.extend(ir_helpers::with_indent(gen_comments_as_statements(
+        leading_comments.iter(),
+        None,
+        context,
+      )));
     }
     items.push_condition(conditions::if_true(
       "newLineIfHasCommentsAndNotStartOfNewLine",
@@ -370,7 +397,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     if let Some(comments) = context.comments.get(&open_token_end) {
       // generate the trailing comment on the first line only if multi-line and if a comment line
       if !is_single_line {
-        items.extend(gen_first_line_trailing_comment(open_token_start_line, comments.iter(), context));
+        items.extend(gen_first_line_trailing_comment(
+          open_token_start_line,
+          comments.iter(),
+          context,
+        ));
       }
 
       // generate the comments
@@ -399,9 +430,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
                 prefer_hanging: false,
                 force_use_new_lines: !is_single_line,
                 allow_blank_lines: true,
-                single_line_space_at_start: false,
-                single_line_space_at_end: false,
-                single_line_separator: Signal::SpaceOrNewLine.into(),
+                single_line_options: ir_helpers::SingleLineOptions {
+                  space_at_start: false,
+                  space_at_end: false,
+                  separator: Signal::SpaceOrNewLine.into(),
+                },
                 indent_width,
                 multi_line_options: ir_helpers::MultiLineOptions::surround_newlines_indented(),
                 force_possible_newline_at_start: false,
@@ -411,7 +444,11 @@ fn gen_surrounded_by_tokens<'a, 'b>(
           );
         } else {
           items.push_signal(Signal::NewLine);
-          items.extend(ir_helpers::with_indent(gen_comments_as_statements(comments.iter(), None, context)));
+          items.extend(ir_helpers::with_indent(gen_comments_as_statements(
+            comments.iter(),
+            None,
+            context,
+          )));
           items.push_signal(Signal::NewLine);
         }
       }
@@ -432,7 +469,9 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     let mut items = PrintItems::new();
     let mut comments = comments;
     if let Some(first_comment) = comments.next() {
-      if first_comment.kind() == CommentKind::Line && context.text_info.line_index(first_comment.start()) == open_token_start_line {
+      if first_comment.kind() == CommentKind::Line
+        && context.text_info.line_index(first_comment.start()) == open_token_start_line
+      {
         if let Some(generated_comment) = gen_comment(first_comment, context) {
           items.push_signal(Signal::StartForceNoNewLines);
           items.push_str(" ");
@@ -447,7 +486,10 @@ fn gen_surrounded_by_tokens<'a, 'b>(
 
 // Comments
 
-fn has_unhandled_comment<'a: 'b, 'b>(mut comments: impl Iterator<Item = &'b Comment<'a>>, context: &mut Context) -> bool {
+fn has_unhandled_comment<'a: 'b, 'b>(
+  mut comments: impl Iterator<Item = &'b Comment<'a>>,
+  context: &mut Context,
+) -> bool {
   comments.any(|c| !context.has_handled_comment(c))
 }
 
@@ -464,7 +506,10 @@ fn gen_trailing_comments_as_statements(node: &dyn Ranged, context: &mut Context)
   gen_comments_as_statements(unhandled_comments.into_iter(), Some(node), context)
 }
 
-fn get_trailing_comments_as_statements<'a, 'b>(node: &dyn Ranged, context: &mut Context<'a, 'b>) -> Vec<&'b Comment<'a>> {
+fn get_trailing_comments_as_statements<'a, 'b>(
+  node: &dyn Ranged,
+  context: &mut Context<'a, 'b>,
+) -> Vec<&'b Comment<'a>> {
   let mut comments = Vec::new();
   let node_end_line = context.text_info.line_index(node.end());
   if let Some(trailing_comments) = context.comments.get(&node.end()) {
@@ -489,7 +534,9 @@ fn gen_comments_as_statements<'a: 'b, 'b>(
       items.extend(gen_comment_based_on_last_node(
         comment,
         &last_node,
-        GenCommentBasedOnLastNodeOptions { separate_with_newlines: true },
+        GenCommentBasedOnLastNodeOptions {
+          separate_with_newlines: true,
+        },
         context,
       ));
       last_node = Some(comment);
@@ -498,7 +545,11 @@ fn gen_comments_as_statements<'a: 'b, 'b>(
   items
 }
 
-fn gen_comments_as_leading<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterator<Item = &'b Comment<'a>>, context: &mut Context) -> PrintItems {
+fn gen_comments_as_leading<'a: 'b, 'b>(
+  node: &dyn Ranged,
+  comments: impl Iterator<Item = &'b Comment<'a>>,
+  context: &mut Context,
+) -> PrintItems {
   let mut items = PrintItems::new();
   let comments = comments.filter(|c| !context.has_handled_comment(c)).collect::<Vec<_>>();
 
@@ -523,21 +574,32 @@ fn gen_comments_as_leading<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterato
   items
 }
 
-fn gen_comments_as_trailing<'a: 'b, 'b>(node: &dyn Ranged, comments: impl Iterator<Item = &'b Comment<'a>>, context: &mut Context) -> PrintItems {
+fn gen_comments_as_trailing<'a: 'b, 'b>(
+  node: &dyn Ranged,
+  comments: impl Iterator<Item = &'b Comment<'a>>,
+  context: &mut Context,
+) -> PrintItems {
   // use the roslyn definition of trailing comments
   let node_end_line = context.text_info.line_index(node.end());
   let trailing_comments_on_same_line = comments
     .filter(|c| context.text_info.line_index(c.start()) <= node_end_line)
     .collect::<Vec<_>>();
 
-  let first_unhandled_comment = trailing_comments_on_same_line.iter().find(|c| !context.has_handled_comment(c));
+  let first_unhandled_comment = trailing_comments_on_same_line
+    .iter()
+    .find(|c| !context.has_handled_comment(c));
   let mut items = PrintItems::new();
 
   if let Some(Comment::Block(_)) = first_unhandled_comment {
     items.push_str(" ");
   }
 
-  items.extend(gen_comment_collection(trailing_comments_on_same_line.into_iter(), Some(node), None, context));
+  items.extend(gen_comment_collection(
+    trailing_comments_on_same_line.into_iter(),
+    Some(node),
+    None,
+    context,
+  ));
 
   items
 }
@@ -626,7 +688,9 @@ fn gen_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems> {
   context.mark_comment_handled(comment);
   Some(match comment {
     Comment::Block(comment) => ir_helpers::gen_js_like_comment_block(comment.text),
-    Comment::Line(comment) => ir_helpers::gen_js_like_comment_line(comment.text, context.config.comment_line_force_space_after_slashes),
+    Comment::Line(comment) => {
+      ir_helpers::gen_js_like_comment_line(comment.text, context.config.comment_line_force_space_after_slashes)
+    }
   })
 }
 
@@ -647,5 +711,6 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // Obviously this line_width * 2 is not always accurate as it doesn't take into account whitespace,
   // but will provide a good enough and fast way to quickly tell if it's long without having basically
   // any false positives (unless someone is being silly).
-  context.text_info.line_index(range.start) == context.text_info.line_index(range.end) && range.width() > (context.config.line_width * 2) as usize
+  context.text_info.line_index(range.start) == context.text_info.line_index(range.end)
+    && range.width() > (context.config.line_width * 2) as usize
 }

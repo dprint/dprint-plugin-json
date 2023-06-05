@@ -50,7 +50,9 @@ impl<'a, 'b> Context<'a, 'b> {
 
         self.text_info.line_index(node.start())
       } else {
-        self.text_info.line_index(leading_comments.iter().next().unwrap().start())
+        self
+          .text_info
+          .line_index(leading_comments.iter().next().unwrap().start())
       }
     } else {
       self.text_info.line_index(node.start())

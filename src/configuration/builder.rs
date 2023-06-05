@@ -1,4 +1,6 @@
-use dprint_core::configuration::{resolve_global_config, ConfigKeyMap, ConfigKeyValue, GlobalConfiguration, NewLineKind};
+use dprint_core::configuration::{
+  resolve_global_config, ConfigKeyMap, ConfigKeyValue, GlobalConfiguration, NewLineKind,
+};
 
 use super::*;
 
@@ -141,7 +143,11 @@ mod tests {
 
     let inner_config = config.get_inner_config();
     assert_eq!(inner_config.len(), 9);
-    let diagnostics = resolve_config(inner_config, &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config).diagnostics;
+    let diagnostics = resolve_config(
+      inner_config,
+      &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config,
+    )
+    .diagnostics;
     assert_eq!(diagnostics.len(), 0);
   }
 
