@@ -89,4 +89,15 @@ mod tests {
       "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~"
     );
   }
+
+  #[test]
+  fn no_panic_diagnostic_multiple_values() {
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
+    let message = format_text("{},\n", &config).err().unwrap().to_string();
+    assert_eq!(
+      message,
+      "Line 1, column 3: Text cannot contain more than one JSON value\n\n  {},"
+    );
+  }
 }
