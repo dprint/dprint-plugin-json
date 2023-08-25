@@ -11,6 +11,8 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use text_lines::TextLines;
 
+use crate::configuration::*;
+
 pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
@@ -259,12 +261,17 @@ fn gen_comma_separated_values<'a>(
           None
         };
         let items = ir_helpers::new_line_group({
-          let generated_comma = if i == nodes_count - 1 {
+          let in_jsonc = false; // How to determine this?
+          let config_allows_trailing_commas = 
+            context.config.trailing_commas == TrailingCommaKind::Always
+            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && in_jsonc);
+          let should_have_comma = i == nodes_count - 1 && config_allows_trailing_commas;
+          let comma_or_nothing = if should_have_comma {
             PrintItems::new()
           } else {
             ",".into()
           };
-          gen_comma_separated_value(value, generated_comma, context)
+          gen_comma_separated_value(value, comma_or_nothing, context)
         });
         generated_nodes.push(ir_helpers::GeneratedValue {
           items,

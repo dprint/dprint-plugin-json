@@ -1,0 +1,10 @@
+-- /file.jsonc --
+== should foo ==
+{
+  "testing": 123
+}
+
+[expect]
+{
+  "testing": 123,
+}
