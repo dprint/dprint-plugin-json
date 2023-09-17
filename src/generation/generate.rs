@@ -8,18 +8,20 @@ use jsonc_parser::common::Range;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::TokenAndRange;
 use std::collections::HashSet;
+use std::path::Path;
 use std::rc::Rc;
 use text_lines::TextLines;
 
 use crate::configuration::*;
 
-pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
+pub fn generate(parse_result: jsonc_parser::ParseResult, path: &Path, text: &str, config: &Configuration) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
   let node_value = parse_result.value;
   let text_info = TextLines::new(text);
   let mut context = Context {
     config,
+    path,
     text,
     text_info,
     handled_comments: HashSet::new(),
@@ -261,10 +263,10 @@ fn gen_comma_separated_values<'a>(
           None
         };
         let items = ir_helpers::new_line_group({
-          let in_jsonc = false; // How to determine this?
+          let is_jsonc = has_jsonc_extension(context.path);
           let config_allows_trailing_commas = 
             context.config.trailing_commas == TrailingCommaKind::Always
-            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && in_jsonc);
+            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && is_jsonc);
           let should_have_comma = i == nodes_count - 1 && config_allows_trailing_commas;
           let comma_or_nothing = if should_have_comma {
             PrintItems::new()
@@ -720,4 +722,12 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // any false positives (unless someone is being silly).
   context.text_info.line_index(range.start) == context.text_info.line_index(range.end)
     && range.width() > (context.config.line_width * 2) as usize
+}
+
+fn has_jsonc_extension(path: &Path) -> bool {
+  if let Some(ext) = path.extension() {
+      return ext.to_str() == Some("jsonc");
+  }
+
+  false
 }

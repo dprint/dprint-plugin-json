@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::bail;
 use anyhow::Result;
 use dprint_core::configuration::resolve_new_line_kind;
@@ -10,11 +12,11 @@ use jsonc_parser::ParseResult;
 use super::configuration::Configuration;
 use super::generation::generate;
 
-pub fn format_text(text: &str, config: &Configuration) -> FormatResult {
+pub fn format_text(path: &Path, text: &str, config: &Configuration) -> FormatResult {
   let parse_result = parse(text)?;
 
   let result = dprint_core::formatting::format(
-    || generate(parse_result, text, config),
+    || generate(parse_result, path, text, config),
     config_to_print_options(text, config),
   );
   if result == text {
@@ -72,7 +74,10 @@ mod tests {
   fn should_error_on_syntax_diagnostic() {
     let global_config = GlobalConfiguration::default();
     let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
-    let message = format_text("{ &*&* }", &config).err().unwrap().to_string();
+    let message = format_text(Path::new("."), "{ &*&* }", &config)
+      .err()
+      .unwrap()
+      .to_string();
     assert_eq!(
       message,
       concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~")
@@ -83,7 +88,10 @@ mod tests {
   fn no_panic_diagnostic_at_multibyte_char() {
     let global_config = GlobalConfiguration::default();
     let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
-    let message = format_text("{ \"a\":\u{200b}5 }", &config).err().unwrap().to_string();
+    let message = format_text(Path::new("."), "{ \"a\":\u{200b}5 }", &config)
+      .err()
+      .unwrap()
+      .to_string();
     assert_eq!(
       message,
       "Line 1, column 7: Unexpected token\n\n  { \"a\":\u{200b}5 }\n        ~"
@@ -94,7 +102,7 @@ mod tests {
   fn no_panic_diagnostic_multiple_values() {
     let global_config = GlobalConfiguration::default();
     let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
-    let message = format_text("{},\n", &config).err().unwrap().to_string();
+    let message = format_text(Path::new("."), "{},\n", &config).err().unwrap().to_string();
     assert_eq!(
       message,
       "Line 1, column 3: Text cannot contain more than one JSON value\n\n  {},"

@@ -3,7 +3,7 @@ extern crate dprint_plugin_json;
 
 //#[macro_use] extern crate debug_here;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 // use std::time::Instant;
 
 use dprint_core::configuration::*;
@@ -31,7 +31,7 @@ fn test_specs() {
         let config_result = resolve_config(parse_config_key_map(spec_config), &global_config);
         ensure_no_diagnostics(&config_result.diagnostics);
 
-        format_text(&file_text, &config_result.config)
+        format_text(Path::new("."), &file_text, &config_result.config)
       }
     },
     move |_, _file_text, _spec_config| {

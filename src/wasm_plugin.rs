@@ -50,12 +50,12 @@ impl SyncPluginHandler<Configuration> for JsonPluginHandler {
 
   fn format(
     &mut self,
-    _file_path: &Path,
+    file_path: &Path,
     file_text: &str,
     config: &Configuration,
     _format_with_host: impl FnMut(&Path, String, &ConfigKeyMap) -> FormatResult,
   ) -> FormatResult {
-    super::format_text(file_text, config)
+    super::format_text(file_path, file_text, config)
   }
 }
 
