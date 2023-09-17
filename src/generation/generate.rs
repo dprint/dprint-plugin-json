@@ -267,7 +267,7 @@ fn gen_comma_separated_values<'a>(
           let config_allows_trailing_commas = 
             context.config.trailing_commas == TrailingCommaKind::Always
             || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && is_jsonc);
-          let should_have_comma = i == nodes_count - 1 && config_allows_trailing_commas;
+          let should_have_comma = i == nodes_count - 1 || config_allows_trailing_commas;
           let comma_or_nothing = if should_have_comma {
             PrintItems::new()
           } else {
