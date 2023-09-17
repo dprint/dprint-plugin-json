@@ -50,7 +50,7 @@ static SPECIAL_JSON_DIRECTORIES: [&str; 1] = [".vscode"];
 /// Some JSONC files use ".json" as a file extension. The best example of this is "tsconfig.json", which is the
 /// configuration file for the TypeScript programming language. When viewing files in VSCode, the language specifier in
 /// the bottom-right corner normally matches what the file extension is. For example, when viewing this file
-/// (generate.rs) in VSCode, the language specifier says "Rust". And when viewing "foo.json" in VSCode, the language
+/// (format_text.rs) in VSCode, the language specifier says "Rust". And when viewing "foo.json" in VSCode, the language
 /// specifier says "JSON". But when viewing "tsconfig.json" in VSCode, the language specifier says "JSON with
 /// Comments". Thus, we must whitelist JSON files with specific paths as being "special" JSON files that should be
 /// treated as JSONC.
