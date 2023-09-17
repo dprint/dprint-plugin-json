@@ -8,7 +8,6 @@ use jsonc_parser::common::Range;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::TokenAndRange;
 use std::collections::HashSet;
-use std::path::Path;
 use std::rc::Rc;
 use text_lines::TextLines;
 
@@ -16,9 +15,9 @@ use crate::configuration::*;
 
 pub fn generate(
   parse_result: jsonc_parser::ParseResult,
-  path: &Path,
   text: &str,
   config: &Configuration,
+  is_jsonc: bool,
 ) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
@@ -26,9 +25,9 @@ pub fn generate(
   let text_info = TextLines::new(text);
   let mut context = Context {
     config,
-    path,
     text,
     text_info,
+    is_jsonc,
     handled_comments: HashSet::new(),
     parent_stack: Vec::new(),
     current_node: None,
@@ -268,11 +267,10 @@ fn gen_comma_separated_values<'a>(
           None
         };
         let items = ir_helpers::new_line_group({
-          let is_jsonc = is_jsonc_file(context.path);
-          let config_allows_trailing_commas = context.config.trailing_commas == TrailingCommaKind::Always
-            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && is_jsonc);
+          let config_enforces_trailing_commas = context.config.trailing_commas == TrailingCommaKind::Always
+            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && context.is_jsonc);
           let is_final_node = i == nodes_count - 1;
-          let should_have_comma = !is_final_node || config_allows_trailing_commas;
+          let should_have_comma = !is_final_node || config_enforces_trailing_commas;
           let comma_or_nothing = if should_have_comma {
             ",".into()
           } else {
@@ -727,54 +725,4 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // any false positives (unless someone is being silly).
   context.text_info.line_index(range.start) == context.text_info.line_index(range.end)
     && range.width() > (context.config.line_width * 2) as usize
-}
-
-/// JSONC stands for "JSON with Comments". It is a file specification created by Microsoft and documented here:
-/// https://code.visualstudio.com/docs/languages/json#_json-with-comments
-/// The official parser is written in TypeScript and is located here:
-/// https://github.com/Microsoft/node-jsonc-parser
-/// One of the biggest benefits of JSONC is that it allows trailing commas. Thus, it is desirable to format JSONC with
-/// trailing commas for all the same reasons that code formatters format other languages with trailing commas.
-fn is_jsonc_file(path: &Path) -> bool {
-  return has_jsonc_extension(path) || is_special_json_file(path);
-}
-
-fn has_jsonc_extension(path: &Path) -> bool {
-  if let Some(ext) = path.extension() {
-    return ext.to_str() == Some("jsonc");
-  }
-
-  false
-}
-
-static SPECIAL_JSON_FILES: [&str; 1] = ["tsconfig.json"];
-static SPECIAL_JSON_DIRECTORIES: [&str; 1] = [".vscode"];
-
-/// Some JSONC files use ".json" as a file extension. The best example of this is "tsconfig.json", which is the
-/// configuration file for the TypeScript programming language. When viewing files in VSCode, the language specifier in
-/// the bottom-right corner normally matches what the file extension is. For example, when viewing this file
-/// (generate.rs) in VSCode, the language specifier says "Rust". And when viewing "foo.json" in VSCode, the language
-/// specifier says "JSON". But when viewing "tsconfig.json" in VSCode, the language specifier says "JSON with
-/// Comments". Thus, we must whitelist JSON files with specific paths as being "special" JSON files that should be
-/// treated as JSONC.
-fn is_special_json_file(path: &Path) -> bool {
-  if let Some(file_name) = path.file_name() {
-    if let Some(file_name_str) = file_name.to_str() {
-      if SPECIAL_JSON_FILES.contains(&file_name_str) {
-        return true;
-      }
-    }
-  }
-
-  if let Some(parent_dir) = path.parent() {
-    if let Some(dir_name) = parent_dir.file_name() {
-      if let Some(dir_name_str) = dir_name.to_str() {
-        if SPECIAL_JSON_DIRECTORIES.contains(&dir_name_str) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
 }

@@ -4,14 +4,13 @@ use jsonc_parser::ast::*;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::CommentMap;
 use std::collections::HashSet;
-use std::path::Path;
 use text_lines::TextLines;
 
 pub struct Context<'a, 'b> {
   pub config: &'b Configuration,
-  pub path: &'b Path,
   pub text: &'b str,
   pub text_info: TextLines,
+  pub is_jsonc: bool,
   pub handled_comments: HashSet<usize>,
   pub parent_stack: Vec<Node<'a, 'a>>,
   pub current_node: Option<Node<'a, 'a>>,
