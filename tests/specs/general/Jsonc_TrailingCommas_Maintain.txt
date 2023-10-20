@@ -1,0 +1,40 @@
+~~ trailingCommas: maintain ~~
+== should maintain when has ==
+{
+  "testing": 123,
+  "prop": [
+    1,
+    2,
+    3,
+  ],
+}
+
+[expect]
+{
+  "testing": 123,
+  "prop": [
+    1,
+    2,
+    3,
+  ],
+}
+
+== should maintain when has not ==
+{
+  "testing": 123,
+  "prop": [
+    1,
+    2,
+    3
+  ]
+}
+
+[expect]
+{
+  "testing": 123,
+  "prop": [
+    1,
+    2,
+    3
+  ]
+}

@@ -267,10 +267,22 @@ fn gen_comma_separated_values<'a>(
           None
         };
         let items = ir_helpers::new_line_group({
-          let config_enforces_trailing_commas = context.config.trailing_commas == TrailingCommaKind::Always
-            || (context.config.trailing_commas == TrailingCommaKind::Jsonc && context.is_jsonc);
           let is_final_node = i == nodes_count - 1;
-          let should_have_comma = !is_final_node || config_enforces_trailing_commas;
+          let should_have_comma = match context.config.trailing_commas {
+            TrailingCommaKind::Always => true,
+            TrailingCommaKind::Maintain => {
+              if is_final_node {
+                match &value {
+                  Some(value) => context.token_finder.get_next_token_if_comma(value.range()).is_some(),
+                  None => false,
+                }
+              } else {
+                true
+              }
+            }
+            TrailingCommaKind::Jsonc => !is_final_node || context.is_jsonc,
+            TrailingCommaKind::Never => !is_final_node,
+          };
           let comma_or_nothing = if should_have_comma {
             ",".into()
           } else {
