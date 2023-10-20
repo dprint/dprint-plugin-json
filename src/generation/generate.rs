@@ -1,6 +1,7 @@
 use super::super::configuration::Configuration;
 use super::context::Context;
 use super::token_finder::TokenFinder;
+use dprint_core::formatting::conditions::if_true_or;
 use dprint_core::formatting::ir_helpers::SingleLineOptions;
 use dprint_core::formatting::*;
 use jsonc_parser::ast::*;
@@ -249,7 +250,7 @@ fn gen_comma_separated_values<'a>(
   let indent_width = context.config.indent_width;
   let compute_lines_span = opts.allow_blank_lines && opts.force_use_new_lines; // save time otherwise
   ir_helpers::gen_separated_values(
-    |_| {
+    |is_multi_line_or_hanging_ref| {
       let mut generated_nodes = Vec::new();
       let nodes_count = nodes.len();
       for (i, value) in nodes.into_iter().enumerate() {
@@ -268,27 +269,25 @@ fn gen_comma_separated_values<'a>(
         };
         let items = ir_helpers::new_line_group({
           let is_final_node = i == nodes_count - 1;
-          let should_have_comma = match context.config.trailing_commas {
-            TrailingCommaKind::Always => true,
-            TrailingCommaKind::Maintain => {
-              if is_final_node {
-                match &value {
-                  Some(value) => context.token_finder.get_next_token_if_comma(value.range()).is_some(),
-                  None => false,
-                }
-              } else {
-                true
-              }
-            }
-            TrailingCommaKind::Jsonc => !is_final_node || context.is_jsonc,
-            TrailingCommaKind::Never => !is_final_node,
-          };
-          let comma_or_nothing = if should_have_comma {
+          let use_comma_for_last = !is_final_node
+            || match context.config.trailing_commas {
+              TrailingCommaKind::Always => true,
+              TrailingCommaKind::Maintain => match &value {
+                Some(value) => context.token_finder.get_next_token_if_comma(value.range()).is_some(),
+                None => false,
+              },
+              TrailingCommaKind::Jsonc => context.is_jsonc,
+              TrailingCommaKind::Never => false,
+            };
+          let maybe_comma = if !is_final_node {
             ",".into()
+          } else if use_comma_for_last {
+            let is_multi_line = is_multi_line_or_hanging_ref.create_resolver();
+            if_true_or("is_multi_line", is_multi_line, ",".into(), PrintItems::new()).into()
           } else {
             PrintItems::new()
           };
-          gen_comma_separated_value(value, comma_or_nothing, context)
+          gen_comma_separated_value(value, maybe_comma, context)
         });
         generated_nodes.push(ir_helpers::GeneratedValue {
           items,
