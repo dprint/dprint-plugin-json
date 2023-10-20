@@ -1,10 +1,19 @@
 -- /file.jsonc --
 == should format with a trailing comma since we are inside of a JSONC file ==
 {
-  "testing": 123
+  "testing": 123,
+  "test1": [1, 2, 3],
+  "test2": [
+    1, 2, 3],
 }
 
 [expect]
 {
   "testing": 123,
+  "test1": [1, 2, 3],
+  "test2": [
+    1,
+    2,
+    3,
+  ],
 }

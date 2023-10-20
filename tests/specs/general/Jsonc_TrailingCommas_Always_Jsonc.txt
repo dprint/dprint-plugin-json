@@ -1,6 +1,6 @@
 -- /file.jsonc --
 ~~ trailingCommas: always ~~
-== should format with a trailing comma since we are inside of a JSONC file ==
+== should format with a trailing comma ==
 {
   "testing": 123
 }
