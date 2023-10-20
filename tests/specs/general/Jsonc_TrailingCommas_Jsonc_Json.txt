@@ -1,0 +1,10 @@
+-- /file.json --
+== should not format with a trailing comma since we are inside of a JSON file ==
+{
+  "testing": 123
+}
+
+[expect]
+{
+  "testing": 123
+}

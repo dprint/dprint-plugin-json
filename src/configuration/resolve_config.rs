@@ -1,4 +1,5 @@
 use super::builder::ConfigurationBuilder;
+use super::types::TrailingCommaKind;
 use super::Configuration;
 use dprint_core::configuration::*;
 
@@ -90,6 +91,12 @@ pub fn resolve_config(
       &mut config,
       "object.preferSingleLine",
       prefer_single_line,
+      &mut diagnostics,
+    ),
+    trailing_commas: get_value(
+      &mut config,
+      "trailingCommas",
+      TrailingCommaKind::Jsonc,
       &mut diagnostics,
     ),
   };

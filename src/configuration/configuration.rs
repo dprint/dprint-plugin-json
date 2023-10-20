@@ -1,6 +1,8 @@
 use dprint_core::configuration::NewLineKind;
 use serde::{Deserialize, Serialize};
 
+use super::types::TrailingCommaKind;
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
@@ -15,4 +17,5 @@ pub struct Configuration {
   pub array_prefer_single_line: bool,
   #[serde(rename = "object.preferSingleLine")]
   pub object_prefer_single_line: bool,
+  pub trailing_commas: TrailingCommaKind,
 }

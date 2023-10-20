@@ -11,7 +11,14 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use text_lines::TextLines;
 
-pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Configuration) -> PrintItems {
+use crate::configuration::*;
+
+pub fn generate(
+  parse_result: jsonc_parser::ParseResult,
+  text: &str,
+  config: &Configuration,
+  is_jsonc: bool,
+) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
   let node_value = parse_result.value;
@@ -20,6 +27,7 @@ pub fn generate(parse_result: jsonc_parser::ParseResult, text: &str, config: &Co
     config,
     text,
     text_info,
+    is_jsonc,
     handled_comments: HashSet::new(),
     parent_stack: Vec::new(),
     current_node: None,
@@ -259,12 +267,16 @@ fn gen_comma_separated_values<'a>(
           None
         };
         let items = ir_helpers::new_line_group({
-          let generated_comma = if i == nodes_count - 1 {
-            PrintItems::new()
-          } else {
+          let config_enforces_trailing_commas = context.config.trailing_commas == TrailingCommaKind::Always
+            || (context.config.trailing_commas == TrailingCommaKind::Jsonc && context.is_jsonc);
+          let is_final_node = i == nodes_count - 1;
+          let should_have_comma = !is_final_node || config_enforces_trailing_commas;
+          let comma_or_nothing = if should_have_comma {
             ",".into()
+          } else {
+            PrintItems::new()
           };
-          gen_comma_separated_value(value, generated_comma, context)
+          gen_comma_separated_value(value, comma_or_nothing, context)
         });
         generated_nodes.push(ir_helpers::GeneratedValue {
           items,

@@ -10,6 +10,7 @@ pub struct Context<'a, 'b> {
   pub config: &'b Configuration,
   pub text: &'b str,
   pub text_info: TextLines,
+  pub is_jsonc: bool,
   pub handled_comments: HashSet<usize>,
   pub parent_stack: Vec<Node<'a, 'a>>,
   pub current_node: Option<Node<'a, 'a>>,
