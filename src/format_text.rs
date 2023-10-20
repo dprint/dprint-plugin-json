@@ -26,56 +26,6 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> FormatRes
   }
 }
 
-/// JSONC stands for "JSON with Comments". It is a file specification created by Microsoft and documented here:
-/// https://code.visualstudio.com/docs/languages/json#_json-with-comments
-/// The official parser is written in TypeScript and is located here:
-/// https://github.com/Microsoft/node-jsonc-parser
-/// One of the biggest benefits of JSONC is that it allows trailing commas. Thus, it is desirable to format JSONC with
-/// trailing commas for all the same reasons that code formatters format other languages with trailing commas.
-fn is_jsonc_file(path: &Path) -> bool {
-  return has_jsonc_extension(path) || is_special_json_file(path);
-}
-
-fn has_jsonc_extension(path: &Path) -> bool {
-  if let Some(ext) = path.extension() {
-    return ext.to_str() == Some("jsonc");
-  }
-
-  false
-}
-
-static SPECIAL_JSON_FILES: [&str; 1] = ["tsconfig.json"];
-static SPECIAL_JSON_DIRECTORIES: [&str; 1] = [".vscode"];
-
-/// Some JSONC files use ".json" as a file extension. The best example of this is "tsconfig.json", which is the
-/// configuration file for the TypeScript programming language. When viewing files in VSCode, the language specifier in
-/// the bottom-right corner normally matches what the file extension is. For example, when viewing this file
-/// (format_text.rs) in VSCode, the language specifier says "Rust". And when viewing "foo.json" in VSCode, the language
-/// specifier says "JSON". But when viewing "tsconfig.json" in VSCode, the language specifier says "JSON with
-/// Comments". Thus, we must whitelist JSON files with specific paths as being "special" JSON files that should be
-/// treated as JSONC.
-fn is_special_json_file(path: &Path) -> bool {
-  if let Some(file_name) = path.file_name() {
-    if let Some(file_name_str) = file_name.to_str() {
-      if SPECIAL_JSON_FILES.contains(&file_name_str) {
-        return true;
-      }
-    }
-  }
-
-  if let Some(parent_dir) = path.parent() {
-    if let Some(dir_name) = parent_dir.file_name() {
-      if let Some(dir_name_str) = dir_name.to_str() {
-        if SPECIAL_JSON_DIRECTORIES.contains(&dir_name_str) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
 #[cfg(feature = "tracing")]
 pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting::TracingResult {
   let parse_result = parse(text).unwrap();
@@ -114,8 +64,41 @@ fn config_to_print_options(text: &str, config: &Configuration) -> PrintOptions {
   }
 }
 
+fn is_jsonc_file(path: &Path) -> bool {
+  fn has_jsonc_extension(path: &Path) -> bool {
+    if let Some(ext) = path.extension() {
+      return ext.to_string_lossy().to_ascii_lowercase() == "jsonc";
+    }
+
+    false
+  }
+
+  static SPECIAL_JSON_FILES: [&str; 1] = ["tsconfig.json"];
+  static SPECIAL_JSON_DIRECTORIES: [&str; 1] = [".vscode"];
+
+  fn is_special_json_file(path: &Path) -> bool {
+    if let Some(file_name) = path.file_name() {
+      if SPECIAL_JSON_FILES.contains(&file_name.to_string_lossy().as_ref()) {
+        return true;
+      }
+    }
+
+    if let Some(parent_dir_name) = path.parent().and_then(|p| p.file_name()) {
+      if SPECIAL_JSON_DIRECTORIES.contains(&parent_dir_name.to_string_lossy().as_ref()) {
+        return true;
+      }
+    }
+
+    false
+  }
+
+  has_jsonc_extension(path) || is_special_json_file(path)
+}
+
 #[cfg(test)]
 mod tests {
+  use std::path::PathBuf;
+
   use super::super::configuration::resolve_config;
   use super::*;
   use dprint_core::configuration::*;
@@ -157,5 +140,15 @@ mod tests {
       message,
       "Line 1, column 3: Text cannot contain more than one JSON value\n\n  {},"
     );
+  }
+
+  #[test]
+  fn test_is_jsonc_file() {
+    assert!(!is_jsonc_file(&PathBuf::from("asdf.json")));
+    assert!(is_jsonc_file(&PathBuf::from("asdf.jsonc")));
+    assert!(is_jsonc_file(&PathBuf::from("ASDF.JSONC")));
+    assert!(is_jsonc_file(&PathBuf::from("tsconfig.json")));
+    assert!(is_jsonc_file(&PathBuf::from("test/.vscode/settings.json")));
+    assert!(!is_jsonc_file(&PathBuf::from("test/vscode/settings.json")));
   }
 }

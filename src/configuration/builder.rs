@@ -100,12 +100,20 @@ impl ConfigurationBuilder {
     self.insert("object.preferSingleLine", value.into())
   }
 
+  /// Whether to use trailing commas.
+  ///
+  /// Default: `TrailingCommaKind::Jsonc`
+  pub fn trailing_commas(&mut self, value: TrailingCommaKind) -> &mut Self {
+    self.insert("trailingCommas", value.to_string().into())
+  }
+
   /// Sets the configuration to what is used in Deno.
   pub fn deno(&mut self) -> &mut Self {
     self
       .line_width(80)
       .ignore_node_comment_text("deno-fmt-ignore")
       .comment_line_force_space_after_slashes(false)
+      .trailing_commas(TrailingCommaKind::Never)
   }
 
   #[cfg(test)]
@@ -139,10 +147,11 @@ mod tests {
       .prefer_single_line(true)
       .array_prefer_single_line(true)
       .object_prefer_single_line(false)
+      .trailing_commas(TrailingCommaKind::Always)
       .ignore_node_comment_text("deno-fmt-ignore");
 
     let inner_config = config.get_inner_config();
-    assert_eq!(inner_config.len(), 9);
+    assert_eq!(inner_config.len(), 10);
     let diagnostics = resolve_config(
       inner_config,
       &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config,

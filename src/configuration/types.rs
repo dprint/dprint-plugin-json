@@ -9,8 +9,13 @@ pub enum TrailingCommaKind {
   Always,
   /// Never format with trailing commas.
   Never,
-  /// Use trailing commas in JSONC files and do not use trailing commas in JSON files. (This is the default option.)
-  OnlyInJSONC,
+  /// Use trailing commas in JSONC files and do not use trailing commas in JSON files. (Default)
+  Jsonc,
 }
 
-generate_str_to_from![TrailingCommaKind, [Always, "always"], [Never, "never"], [OnlyInJSONC, "onlyInJSONC"]];
+generate_str_to_from![
+  TrailingCommaKind,
+  [Always, "always"],
+  [Never, "never"],
+  [Jsonc, "jsonc"]
+];

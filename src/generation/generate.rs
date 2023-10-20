@@ -268,7 +268,7 @@ fn gen_comma_separated_values<'a>(
         };
         let items = ir_helpers::new_line_group({
           let config_enforces_trailing_commas = context.config.trailing_commas == TrailingCommaKind::Always
-            || (context.config.trailing_commas == TrailingCommaKind::OnlyInJSONC && context.is_jsonc);
+            || (context.config.trailing_commas == TrailingCommaKind::Jsonc && context.is_jsonc);
           let is_final_node = i == nodes_count - 1;
           let should_have_comma = !is_final_node || config_enforces_trailing_commas;
           let comma_or_nothing = if should_have_comma {
