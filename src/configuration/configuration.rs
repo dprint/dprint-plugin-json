@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::types::TrailingCommaKind;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Configuration {
   pub line_width: u32,
@@ -18,4 +18,5 @@ pub struct Configuration {
   #[serde(rename = "object.preferSingleLine")]
   pub object_prefer_single_line: bool,
   pub trailing_commas: TrailingCommaKind,
+  pub json_trailing_comma_files: Vec<String>,
 }

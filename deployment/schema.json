@@ -3,6 +3,34 @@
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-json/0.0.0/schema.json",
   "type": "object",
   "definitions": {
+    "preferSingleLine": {
+      "description": "If arrays and objects should collapse to a single line if it would be below the line width.",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    }
+  },
+  "properties": {
+    "locked": {
+      "description": "Whether the configuration is not allowed to be overriden or extended.",
+      "type": "boolean"
+    },
+    "lineWidth": {
+      "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
+      "default": 120,
+      "type": "number"
+    },
+    "indentWidth": {
+      "description": "The number of characters for an indent.",
+      "default": 2,
+      "type": "number"
+    },
     "useTabs": {
       "description": "Whether to use tabs (true) or spaces (false).",
       "type": "boolean",
@@ -46,55 +74,6 @@
       }]
     },
     "preferSingleLine": {
-      "description": "If arrays and objects should collapse to a single line if it would be below the line width.",
-      "type": "boolean",
-      "default": false,
-      "oneOf": [{
-        "const": true,
-        "description": ""
-      }, {
-        "const": false,
-        "description": ""
-      }]
-    },
-    "deno": {
-      "description": "Top level configuration that sets the configuration to what is used in Deno.",
-      "type": "boolean",
-      "default": false,
-      "oneOf": [{
-        "const": true,
-        "description": ""
-      }, {
-        "const": false,
-        "description": ""
-      }]
-    }
-  },
-  "properties": {
-    "locked": {
-      "description": "Whether the configuration is not allowed to be overriden or extended.",
-      "type": "boolean"
-    },
-    "lineWidth": {
-      "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
-      "default": 120,
-      "type": "number"
-    },
-    "indentWidth": {
-      "description": "The number of characters for an indent.",
-      "default": 2,
-      "type": "number"
-    },
-    "useTabs": {
-      "$ref": "#/definitions/useTabs"
-    },
-    "newLineKind": {
-      "$ref": "#/definitions/newLineKind"
-    },
-    "commentLine.forceSpaceAfterSlashes": {
-      "$ref": "#/definitions/commentLine.forceSpaceAfterSlashes"
-    },
-    "preferSingleLine": {
       "$ref": "#/definitions/preferSingleLine"
     },
     "array.preferSingleLine": {
@@ -121,8 +100,24 @@
         "description": "Never format with trailing commas."
       }]
     },
+    "jsonTrailingCommaFiles": {
+      "description": "When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas (ex. `[\"tsconfig.json\", \".vscode/settings.json\"]`).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "deno": {
-      "$ref": "#/definitions/deno"
+      "description": "Top level configuration that sets the configuration to what is used in Deno.",
+      "type": "boolean",
+      "default": false,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
     },
     "ignoreNodeCommentText": {
       "description": "The text to use for an ignore comment (ex. `// dprint-ignore`).",

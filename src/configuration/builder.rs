@@ -107,6 +107,16 @@ impl ConfigurationBuilder {
     self.insert("trailingCommas", value.to_string().into())
   }
 
+  /// When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas.
+  ///
+  /// Ex. `vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()]`
+  pub fn json_trailing_comma_files(&mut self, value: Vec<String>) -> &mut Self {
+    self.insert(
+      "jsonTrailingCommaFiles",
+      ConfigKeyValue::Array(value.into_iter().map(|v| v.into()).collect()),
+    )
+  }
+
   /// Sets the configuration to what is used in Deno.
   pub fn deno(&mut self) -> &mut Self {
     self
@@ -148,10 +158,11 @@ mod tests {
       .array_prefer_single_line(true)
       .object_prefer_single_line(false)
       .trailing_commas(TrailingCommaKind::Always)
+      .json_trailing_comma_files(vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()])
       .ignore_node_comment_text("deno-fmt-ignore");
 
     let inner_config = config.get_inner_config();
-    assert_eq!(inner_config.len(), 10);
+    assert_eq!(inner_config.len(), 11);
     let diagnostics = resolve_config(
       inner_config,
       &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config,
