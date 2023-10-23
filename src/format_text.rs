@@ -14,7 +14,7 @@ use super::generation::generate;
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> FormatResult {
   let parse_result = parse(text)?;
-  let is_jsonc = is_jsonc_file(path);
+  let is_jsonc = is_jsonc_file(path, config);
   let result = dprint_core::formatting::format(
     || generate(parse_result, text, config, is_jsonc),
     config_to_print_options(text, config),
@@ -64,7 +64,7 @@ fn config_to_print_options(text: &str, config: &Configuration) -> PrintOptions {
   }
 }
 
-fn is_jsonc_file(path: &Path) -> bool {
+fn is_jsonc_file(path: &Path, config: &Configuration) -> bool {
   fn has_jsonc_extension(path: &Path) -> bool {
     if let Some(ext) = path.extension() {
       return ext.to_string_lossy().to_ascii_lowercase() == "jsonc";
@@ -73,18 +73,18 @@ fn is_jsonc_file(path: &Path) -> bool {
     false
   }
 
-  static SPECIAL_JSON_FILES: [&str; 1] = ["tsconfig.json"];
-  static SPECIAL_JSON_DIRECTORIES: [&str; 1] = [".vscode"];
-
-  fn is_special_json_file(path: &Path) -> bool {
-    if let Some(file_name) = path.file_name() {
-      if SPECIAL_JSON_FILES.contains(&file_name.to_string_lossy().as_ref()) {
+  fn is_special_json_file(path: &Path, config: &Configuration) -> bool {
+    let path = path.to_string_lossy();
+    for file_name in &config.json_trailing_comma_files {
+      if path.ends_with(file_name) {
         return true;
       }
     }
 
-    if let Some(parent_dir_name) = path.parent().and_then(|p| p.file_name()) {
-      if SPECIAL_JSON_DIRECTORIES.contains(&parent_dir_name.to_string_lossy().as_ref()) {
+    for dir_name in &config.json_trailing_comma_directories {
+      debug_assert!(dir_name.starts_with('/') || dir_name.starts_with('\\'));
+      debug_assert!(dir_name.ends_with('/') || dir_name.ends_with('\\'));
+      if path.contains(dir_name) {
         return true;
       }
     }
@@ -92,12 +92,14 @@ fn is_jsonc_file(path: &Path) -> bool {
     false
   }
 
-  has_jsonc_extension(path) || is_special_json_file(path)
+  has_jsonc_extension(path) || is_special_json_file(path, config)
 }
 
 #[cfg(test)]
 mod tests {
   use std::path::PathBuf;
+
+  use crate::configuration::ConfigurationBuilder;
 
   use super::super::configuration::resolve_config;
   use super::*;
@@ -144,11 +146,15 @@ mod tests {
 
   #[test]
   fn test_is_jsonc_file() {
-    assert!(!is_jsonc_file(&PathBuf::from("asdf.json")));
-    assert!(is_jsonc_file(&PathBuf::from("asdf.jsonc")));
-    assert!(is_jsonc_file(&PathBuf::from("ASDF.JSONC")));
-    assert!(is_jsonc_file(&PathBuf::from("tsconfig.json")));
-    assert!(is_jsonc_file(&PathBuf::from("test/.vscode/settings.json")));
-    assert!(!is_jsonc_file(&PathBuf::from("test/vscode/settings.json")));
+    let config = ConfigurationBuilder::new()
+      .json_trailing_comma_directories(vec![".vscode".to_string()])
+      .json_trailing_comma_files(vec!["tsconfig.json".to_string()])
+      .build();
+    assert!(!is_jsonc_file(&PathBuf::from("/asdf.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/asdf.jsonc"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/ASDF.JSONC"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/tsconfig.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/test/.vscode/settings.json"), &config));
+    assert!(!is_jsonc_file(&PathBuf::from("/test/vscode/settings.json"), &config));
   }
 }

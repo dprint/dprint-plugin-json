@@ -99,6 +99,28 @@ pub fn resolve_config(
       TrailingCommaKind::Jsonc,
       &mut diagnostics,
     ),
+    json_trailing_comma_files: get_trailing_comma_file_or_directories(
+      &mut config,
+      "jsonTrailingCommaFiles",
+      &mut diagnostics,
+    ),
+    json_trailing_comma_directories: get_trailing_comma_file_or_directories(
+      &mut config,
+      "jsonTrailingCommaDirectories",
+      &mut diagnostics,
+    )
+    .into_iter()
+    .map(|dir| {
+      if dir.ends_with('/') || dir.ends_with('\\') {
+        dir
+      } else if dir.contains('/') {
+        format!("{}/", dir)
+      } else {
+        debug_assert!(dir.contains('\\'));
+        format!("{}\\", dir)
+      }
+    })
+    .collect(),
   };
 
   diagnostics.extend(get_unknown_property_diagnostics(config));
@@ -115,4 +137,44 @@ fn fill_deno_config(config: &mut ConfigKeyMap) {
       config.insert(key.clone(), value.clone());
     }
   }
+}
+
+fn get_trailing_comma_file_or_directories(
+  config: &mut ConfigKeyMap,
+  key: &str,
+  diagnostics: &mut Vec<ConfigurationDiagnostic>,
+) -> Vec<String> {
+  let mut entries = Vec::with_capacity(0);
+  if let Some(values) = config.remove(key) {
+    if let ConfigKeyValue::Array(values) = values {
+      entries = Vec::with_capacity(values.len() * 2);
+      for (i, value) in values.into_iter().enumerate() {
+        if let ConfigKeyValue::String(value) = value {
+          if value.chars().any(|c| matches!(c, '\\' | '/')) {
+            let value = if value.starts_with('/') || value.starts_with('\\') {
+              value
+            } else {
+              format!("/{}", value)
+            };
+            entries.push(value.replace('/', "\\"));
+            entries.push(value.replace('\\', "/"));
+          } else {
+            entries.push(format!("/{}", value));
+            entries.push(format!("\\{}", value));
+          }
+        } else {
+          diagnostics.push(ConfigurationDiagnostic {
+            property_name: key.to_string(),
+            message: format!("Expected element at index {} to be a string.", i),
+          });
+        }
+      }
+    } else {
+      diagnostics.push(ConfigurationDiagnostic {
+        property_name: key.to_string(),
+        message: "Expected an array.".to_string(),
+      });
+    }
+  }
+  entries
 }
