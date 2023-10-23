@@ -109,21 +109,10 @@ impl ConfigurationBuilder {
 
   /// When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas.
   ///
-  /// Ex. `vec!["tsconfig.json".to_string()]`
+  /// Ex. `vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()]`
   pub fn json_trailing_comma_files(&mut self, value: Vec<String>) -> &mut Self {
     self.insert(
       "jsonTrailingCommaFiles",
-      ConfigKeyValue::Array(value.into_iter().map(|v| v.into()).collect()),
-    )
-  }
-
-  /// When `trailingCommas` is `jsonc`, treat these directories as containing
-  /// JSONC files and use trailing commas.
-  ///
-  /// Ex. `vec![".vscode".to_string()]`
-  pub fn json_trailing_comma_directories(&mut self, value: Vec<String>) -> &mut Self {
-    self.insert(
-      "jsonTrailingCommaDirectories",
       ConfigKeyValue::Array(value.into_iter().map(|v| v.into()).collect()),
     )
   }
@@ -169,12 +158,11 @@ mod tests {
       .array_prefer_single_line(true)
       .object_prefer_single_line(false)
       .trailing_commas(TrailingCommaKind::Always)
-      .json_trailing_comma_files(vec!["tsconfig.json".to_string()])
-      .json_trailing_comma_directories(vec![".vscode".to_string()])
+      .json_trailing_comma_files(vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()])
       .ignore_node_comment_text("deno-fmt-ignore");
 
     let inner_config = config.get_inner_config();
-    assert_eq!(inner_config.len(), 12);
+    assert_eq!(inner_config.len(), 11);
     let diagnostics = resolve_config(
       inner_config,
       &resolve_global_config(ConfigKeyMap::new(), &Default::default()).config,

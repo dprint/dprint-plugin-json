@@ -99,28 +99,7 @@ pub fn resolve_config(
       TrailingCommaKind::Jsonc,
       &mut diagnostics,
     ),
-    json_trailing_comma_files: get_trailing_comma_file_or_directories(
-      &mut config,
-      "jsonTrailingCommaFiles",
-      &mut diagnostics,
-    ),
-    json_trailing_comma_directories: get_trailing_comma_file_or_directories(
-      &mut config,
-      "jsonTrailingCommaDirectories",
-      &mut diagnostics,
-    )
-    .into_iter()
-    .map(|dir| {
-      if dir.ends_with('/') || dir.ends_with('\\') {
-        dir
-      } else if dir.contains('/') {
-        format!("{}/", dir)
-      } else {
-        debug_assert!(dir.contains('\\'));
-        format!("{}\\", dir)
-      }
-    })
-    .collect(),
+    json_trailing_comma_files: get_trailing_comma_files(&mut config, "jsonTrailingCommaFiles", &mut diagnostics),
   };
 
   diagnostics.extend(get_unknown_property_diagnostics(config));
@@ -139,7 +118,7 @@ fn fill_deno_config(config: &mut ConfigKeyMap) {
   }
 }
 
-fn get_trailing_comma_file_or_directories(
+fn get_trailing_comma_files(
   config: &mut ConfigKeyMap,
   key: &str,
   diagnostics: &mut Vec<ConfigurationDiagnostic>,
@@ -150,7 +129,15 @@ fn get_trailing_comma_file_or_directories(
       entries = Vec::with_capacity(values.len() * 2);
       for (i, value) in values.into_iter().enumerate() {
         if let ConfigKeyValue::String(value) = value {
-          if value.chars().any(|c| matches!(c, '\\' | '/')) {
+          if value.starts_with("./") {
+            diagnostics.push(ConfigurationDiagnostic {
+              property_name: key.to_string(),
+              message: format!(
+                "Element at index {} starting with dot slash (./) is not supported. Remove the leading dot slash.",
+                i
+              ),
+            });
+          } else if value.chars().any(|c| matches!(c, '\\' | '/')) {
             let value = if value.starts_with('/') || value.starts_with('\\') {
               value
             } else {
@@ -177,4 +164,58 @@ fn get_trailing_comma_file_or_directories(
     }
   }
   entries
+}
+
+#[cfg(test)]
+mod test {
+  use dprint_core::configuration::ConfigKeyMap;
+  use dprint_core::configuration::ConfigKeyValue;
+  use dprint_core::configuration::GlobalConfiguration;
+
+  use super::resolve_config;
+
+  #[test]
+  fn json_trailing_comma_files() {
+    let global_config = GlobalConfiguration::default();
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![ConfigKeyValue::String("test.json".to_string())]),
+        )]),
+        &global_config,
+      );
+      assert!(result.diagnostics.is_empty());
+      assert_eq!(
+        result.config.json_trailing_comma_files,
+        vec!["/test.json".to_string(), "\\test.json".to_string(),]
+      );
+    }
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![ConfigKeyValue::String("./test.json".to_string())]),
+        )]),
+        &global_config,
+      );
+      assert_eq!(
+        result.diagnostics[0].message,
+        "Element at index 0 starting with dot slash (./) is not supported. Remove the leading dot slash."
+      );
+    }
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![ConfigKeyValue::Number(5)]),
+        )]),
+        &global_config,
+      );
+      assert_eq!(
+        result.diagnostics[0].message,
+        "Expected element at index 0 to be a string."
+      );
+    }
+  }
 }

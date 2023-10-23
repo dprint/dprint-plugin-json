@@ -100,15 +100,8 @@
         "description": "Never format with trailing commas."
       }]
     },
-    "jsonTrailingCommaDirectories": {
-      "description": "When `trailingCommas` is `jsonc`, treat these directories as containing JSONC files (ex. `[\".vscode\"]`.",
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "jsonTrailingCommaFiles": {
-      "description": "When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas (ex. `[\"tsconfig.json\"]`).",
+      "description": "When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas (ex. `[\"tsconfig.json\", \".vscode/settings.json\"]`).",
       "type": "array",
       "items": {
         "type": "string"

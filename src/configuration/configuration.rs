@@ -19,5 +19,4 @@ pub struct Configuration {
   pub object_prefer_single_line: bool,
   pub trailing_commas: TrailingCommaKind,
   pub json_trailing_comma_files: Vec<String>,
-  pub json_trailing_comma_directories: Vec<String>,
 }

@@ -81,14 +81,6 @@ fn is_jsonc_file(path: &Path, config: &Configuration) -> bool {
       }
     }
 
-    for dir_name in &config.json_trailing_comma_directories {
-      debug_assert!(dir_name.starts_with('/') || dir_name.starts_with('\\'));
-      debug_assert!(dir_name.ends_with('/') || dir_name.ends_with('\\'));
-      if path.contains(dir_name) {
-        return true;
-      }
-    }
-
     false
   }
 
@@ -147,8 +139,7 @@ mod tests {
   #[test]
   fn test_is_jsonc_file() {
     let config = ConfigurationBuilder::new()
-      .json_trailing_comma_directories(vec![".vscode".to_string()])
-      .json_trailing_comma_files(vec!["tsconfig.json".to_string()])
+      .json_trailing_comma_files(vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()])
       .build();
     assert!(!is_jsonc_file(&PathBuf::from("/asdf.json"), &config));
     assert!(is_jsonc_file(&PathBuf::from("/asdf.jsonc"), &config));
@@ -156,5 +147,8 @@ mod tests {
     assert!(is_jsonc_file(&PathBuf::from("/tsconfig.json"), &config));
     assert!(is_jsonc_file(&PathBuf::from("/test/.vscode/settings.json"), &config));
     assert!(!is_jsonc_file(&PathBuf::from("/test/vscode/settings.json"), &config));
+    if cfg!(windows) {
+      assert!(is_jsonc_file(&PathBuf::from("test\\.vscode\\settings.json"), &config));
+    }
   }
 }
