@@ -62,7 +62,7 @@ fn gen_node_with_inner<'a>(
   inner_gen: impl FnOnce(PrintItems, &mut Context<'a, '_>) -> PrintItems,
 ) -> PrintItems {
   // store info
-  let past_current_node = context.current_node.replace(node.clone());
+  let past_current_node = context.current_node.replace(node);
   let parent_end = past_current_node.as_ref().map(|n| n.end());
   let node_end = node.end();
   let is_root = past_current_node.is_none();
