@@ -4,7 +4,6 @@ use anyhow::bail;
 use anyhow::Result;
 use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
-use dprint_core::plugins::FormatResult;
 use jsonc_parser::parse_to_ast;
 use jsonc_parser::CollectOptions;
 use jsonc_parser::ParseResult;
@@ -12,7 +11,7 @@ use jsonc_parser::ParseResult;
 use super::configuration::Configuration;
 use super::generation::generate;
 
-pub fn format_text(path: &Path, text: &str, config: &Configuration) -> FormatResult {
+pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
   let parse_result = parse(text)?;
   let is_jsonc = is_jsonc_file(path, config);
   let result = dprint_core::formatting::format(

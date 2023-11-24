@@ -26,13 +26,13 @@ tracing = ["dprint-core/tracing"]
 
 [dependencies]
 anyhow = "1.0.64"
-dprint-core = { version = "0.62.1", features = ["formatting"] }
-jsonc-parser = { version = "0.21.1" }
+dprint-core = { version = "0.63.3", features = ["formatting"] }
+jsonc-parser = { version = "0.23.0" }
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
 text_lines = "0.6.0"
 
 [dev-dependencies]
 debug-here = "0.2"
-dprint-development = "0.9.1"
+dprint-development = "0.9.5"
 serde_json = { version = "1.0" }
