@@ -23,7 +23,7 @@ Then in your project's dprint configuration file:
        // json config goes here
      },
      "plugins": [
-       "https://plugins.dprint.dev/json-\${{ steps.get_tag_version.outputs.TAG_VERSION }}.wasm"
+       "https://plugins.dprint.dev/json-${version}.wasm"
      ]
    }
    \`\`\`
