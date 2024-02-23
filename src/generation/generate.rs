@@ -4,6 +4,7 @@ use super::token_finder::TokenFinder;
 use dprint_core::formatting::conditions::if_true_or;
 use dprint_core::formatting::ir_helpers::SingleLineOptions;
 use dprint_core::formatting::*;
+use dprint_core_macros::sc;
 use jsonc_parser::ast::*;
 use jsonc_parser::common::Range;
 use jsonc_parser::common::Ranged;
@@ -81,7 +82,7 @@ fn gen_node_with_inner<'a>(
 
   // generate the node
   if has_ignore_comment(&node, context) {
-    items.push_str(""); // force the current line indentation
+    items.push_force_current_line_indentation();
     items.extend(inner_gen(
       ir_helpers::gen_from_raw_string(node.text(context.text)),
       context,
@@ -146,8 +147,8 @@ fn gen_array<'a>(node: &'a Array<'a>, context: &mut Context<'a, '_>) -> PrintIte
       items
     },
     GenSurroundedByTokensOptions {
-      open_token: "[",
-      close_token: "]",
+      open_token: sc!("["),
+      close_token: sc!("]"),
       range: node.range,
       first_member: node.elements.first().map(|f| f.range()),
       prefer_single_line_when_empty: true,
@@ -186,8 +187,8 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
       items
     },
     GenSurroundedByTokensOptions {
-      open_token: "{",
-      close_token: "}",
+      open_token: sc!("{"),
+      close_token: sc!("}"),
       range: obj.range,
       first_member: obj.properties.first().map(|f| &f.range),
       prefer_single_line_when_empty: false,
@@ -199,11 +200,13 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
 fn gen_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> PrintItems {
   let mut items = PrintItems::new();
   items.extend(gen_node((&node.name).into(), context));
-  items.push_str(": ");
+  items.push_sc(sc!(": "));
   items.extend(gen_node((&node.value).into(), context));
 
   items
 }
+
+const DOUBLE_QUOTE_SC: &'static StringContainer = sc!("\"");
 
 fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> PrintItems {
   let text = node.text(context.text);
@@ -215,18 +218,18 @@ fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> Pri
   } else {
     text.replace("\\'", "'")
   };
-  items.push_str("\"");
+  items.push_sc(DOUBLE_QUOTE_SC);
   items.push_string(text.replace('"', "\\\""));
-  items.push_str("\"");
+  items.push_sc(DOUBLE_QUOTE_SC);
   items
 }
 
 fn gen_word_lit<'a>(node: &'a WordLit<'a>, _: &mut Context<'a, '_>) -> PrintItems {
   // this will be a property name that's not a string literal
   let mut items = PrintItems::new();
-  items.push_str("\"");
+  items.push_sc(DOUBLE_QUOTE_SC);
   items.push_string(node.value.to_string());
-  items.push_str("\"");
+  items.push_sc(DOUBLE_QUOTE_SC);
   items
 }
 
@@ -354,8 +357,8 @@ fn gen_comma_separated_value<'a>(
 }
 
 struct GenSurroundedByTokensOptions<'a> {
-  open_token: &'static str,
-  close_token: &'static str,
+  open_token: &'static StringContainer,
+  close_token: &'static StringContainer,
   range: Range,
   first_member: Option<&'a Range>,
   prefer_single_line_when_empty: bool,
@@ -366,20 +369,20 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   opts: GenSurroundedByTokensOptions<'a>,
   context: &mut Context<'a, 'b>,
 ) -> PrintItems {
-  let open_token_end = opts.range.start + opts.open_token.len();
-  let close_token_start = opts.range.end - opts.close_token.len();
+  let open_token_end = opts.range.start + opts.open_token.text.len();
+  let close_token_start = opts.range.end - opts.close_token.text.len();
 
   // assert the tokens are in the place the caller says they are
   #[cfg(debug_assertions)]
-  context.assert_text(opts.range.start, open_token_end, opts.open_token);
+  context.assert_text(opts.range.start, open_token_end, opts.open_token.text);
   #[cfg(debug_assertions)]
-  context.assert_text(close_token_start, opts.range.end, opts.close_token);
+  context.assert_text(close_token_start, opts.range.end, opts.close_token.text);
 
   // generate
   let mut items = PrintItems::new();
   let open_token_start_line = context.text_info.line_index(opts.range.start);
 
-  items.push_str(opts.open_token);
+  items.push_sc(opts.open_token);
   if let Some(first_member) = opts.first_member {
     let first_member_start_line = context.text_info.line_index(first_member.start);
     if open_token_start_line < first_member_start_line {
@@ -480,7 +483,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     }
   }
 
-  items.push_str(opts.close_token);
+  items.push_sc(opts.close_token);
 
   return items;
 
@@ -497,7 +500,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
       {
         if let Some(generated_comment) = gen_comment(first_comment, context) {
           items.push_signal(Signal::StartForceNoNewLines);
-          items.push_str(" ");
+          items.push_space();
           items.extend(generated_comment);
           items.push_signal(Signal::FinishForceNoNewLines);
         }
@@ -614,7 +617,7 @@ fn gen_comments_as_trailing<'a: 'b, 'b>(
   let mut items = PrintItems::new();
 
   if let Some(Comment::Block(_)) = first_unhandled_comment {
-    items.push_str(" ");
+    items.push_space();
   }
 
   items.extend(gen_comment_collection(
@@ -683,10 +686,10 @@ fn gen_comment_based_on_last_node(
       }
     } else if comment.kind() == CommentKind::Line {
       items.push_signal(Signal::StartForceNoNewLines);
-      items.push_str(" ");
+      items.push_space();
       pushed_ignore_new_lines = true;
     } else if last_node.text(context.text).starts_with("/*") {
-      items.push_str(" ");
+      items.push_space();
     }
   }
 
