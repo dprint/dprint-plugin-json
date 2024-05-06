@@ -213,13 +213,13 @@ fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> Pri
   let is_double_quotes = text.starts_with('"');
   let mut items = PrintItems::new();
   let text = &text[1..text.len() - 1];
-  let text = if is_double_quotes {
-    text.replace("\\\"", "\"")
-  } else {
-    text.replace("\\'", "'")
-  };
   items.push_sc(DOUBLE_QUOTE_SC);
-  items.push_string(text.replace('"', "\\\""));
+  if is_double_quotes {
+    items.push_string(text.to_string());
+  } else {
+    let text = text.replace("\\'", "'");
+    items.push_string(text.replace('"', "\\\""));
+  }
   items.push_sc(DOUBLE_QUOTE_SC);
   items
 }

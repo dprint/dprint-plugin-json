@@ -4,6 +4,7 @@ extern crate dprint_plugin_json;
 //#[macro_use] extern crate debug_here;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 // use std::time::Instant;
 
 use dprint_core::configuration::*;
@@ -27,15 +28,15 @@ fn test_specs() {
     },
     {
       let global_config = global_config.clone();
-      move |path, file_text, spec_config| {
+      Arc::new(move |path, file_text, spec_config| {
         let spec_config: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
         let config_result = resolve_config(spec_config, &global_config);
         ensure_no_diagnostics(&config_result.diagnostics);
 
         format_text(&path, &file_text, &config_result.config)
-      }
+      })
     },
-    move |_, _file_text, _spec_config| {
+    Arc::new(move |_, _file_text, _spec_config| {
       #[cfg(feature = "tracing")]
       {
         let spec_config: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
@@ -46,6 +47,6 @@ fn test_specs() {
 
       #[cfg(not(feature = "tracing"))]
       panic!("\n====\nPlease run with `cargo test --features tracing` to get trace output\n====\n")
-    },
+    }),
   )
 }
