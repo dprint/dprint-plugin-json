@@ -12,17 +12,22 @@ use super::configuration::Configuration;
 use super::generation::generate;
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
-  let parse_result = parse(text)?;
-  let is_jsonc = is_jsonc_file(path, config);
-  let result = dprint_core::formatting::format(
-    || generate(parse_result, text, config, is_jsonc),
-    config_to_print_options(text, config),
-  );
+  let result = format_text_inner(path, text, config)?;
   if result == text {
     Ok(None)
   } else {
     Ok(Some(result))
   }
+}
+
+fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String> {
+  let text = strip_bom(text);
+  let parse_result = parse(text)?;
+  let is_jsonc = is_jsonc_file(path, config);
+  Ok(dprint_core::formatting::format(
+    || generate(parse_result, text, config, is_jsonc),
+    config_to_print_options(text, config),
+  ))
 }
 
 #[cfg(feature = "tracing")]
@@ -33,6 +38,10 @@ pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting
     || generate(parse_result, text, config),
     config_to_print_options(text, config),
   )
+}
+
+fn strip_bom(text: &str) -> &str {
+  text.strip_prefix("\u{FEFF}").unwrap_or(text)
 }
 
 fn parse(text: &str) -> Result<ParseResult<'_>> {
@@ -148,6 +157,16 @@ mod tests {
     assert!(!is_jsonc_file(&PathBuf::from("/test/vscode/settings.json"), &config));
     if cfg!(windows) {
       assert!(is_jsonc_file(&PathBuf::from("test\\.vscode\\settings.json"), &config));
+    }
+  }
+
+  #[test]
+  fn should_strip_bom() {
+    for input_text in ["\u{FEFF}{}", "\u{FEFF}{ }"] {
+      let global_config = GlobalConfiguration::default();
+      let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
+      let output_text = format_text(Path::new("."), input_text, &config).unwrap().unwrap();
+      assert_eq!(output_text, "{}\n");
     }
   }
 }
