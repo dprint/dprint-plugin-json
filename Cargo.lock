@@ -263,9 +263,9 @@ checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
 name = "jsonc-parser"
-version = "0.23.0"
+version = "0.26.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7725c320caac8c21d8228c1d055af27a995d371f78cc763073d3e068323641b5"
+checksum = "0600d6a0361200299ef0c64cc5f1b910705cb397dd44250ad924f396a78725bf"
 
 [[package]]
 name = "lazy_static"

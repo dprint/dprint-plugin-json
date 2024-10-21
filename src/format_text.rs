@@ -6,6 +6,7 @@ use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
 use jsonc_parser::parse_to_ast;
 use jsonc_parser::CollectOptions;
+use jsonc_parser::CommentCollectionStrategy;
 use jsonc_parser::ParseResult;
 
 use super::configuration::Configuration;
@@ -48,7 +49,7 @@ fn parse(text: &str) -> Result<ParseResult<'_>> {
   let parse_result = parse_to_ast(
     text,
     &CollectOptions {
-      comments: true,
+      comments: CommentCollectionStrategy::Separate,
       tokens: true,
     },
     &Default::default(),
@@ -56,8 +57,8 @@ fn parse(text: &str) -> Result<ParseResult<'_>> {
   match parse_result {
     Ok(result) => Ok(result),
     Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
-      Some((err.range.start, err.range.end)),
-      &err.message,
+      Some((err.range().start, err.range().end)),
+      &err.kind().to_string(),
       text,
     )),
   }

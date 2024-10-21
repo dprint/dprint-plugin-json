@@ -190,7 +190,7 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
       open_token: sc!("{"),
       close_token: sc!("}"),
       range: obj.range,
-      first_member: obj.properties.first().map(|f| &f.range),
+      first_member: obj.properties.first().map(|f| f.range()),
       prefer_single_line_when_empty: false,
     },
     context,
@@ -276,7 +276,7 @@ fn gen_comma_separated_values<'a>(
             || match context.config.trailing_commas {
               TrailingCommaKind::Always => true,
               TrailingCommaKind::Maintain => match &value {
-                Some(value) => context.token_finder.get_next_token_if_comma(value.range()).is_some(),
+                Some(value) => context.token_finder.get_next_token_if_comma(&value.range()).is_some(),
                 None => false,
               },
               TrailingCommaKind::Jsonc => context.is_jsonc,
@@ -356,17 +356,17 @@ fn gen_comma_separated_value<'a>(
   }
 }
 
-struct GenSurroundedByTokensOptions<'a> {
+struct GenSurroundedByTokensOptions {
   open_token: &'static StringContainer,
   close_token: &'static StringContainer,
   range: Range,
-  first_member: Option<&'a Range>,
+  first_member: Option<Range>,
   prefer_single_line_when_empty: bool,
 }
 
 fn gen_surrounded_by_tokens<'a, 'b>(
   gen_inner: impl FnOnce(&mut Context<'a, 'b>) -> PrintItems,
-  opts: GenSurroundedByTokensOptions<'a>,
+  opts: GenSurroundedByTokensOptions,
   context: &mut Context<'a, 'b>,
 ) -> PrintItems {
   let open_token_end = opts.range.start + opts.open_token.text.len();
