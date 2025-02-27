@@ -124,7 +124,7 @@ fn get_trailing_comma_files(
   diagnostics: &mut Vec<ConfigurationDiagnostic>,
 ) -> Vec<String> {
   let mut entries = Vec::with_capacity(0);
-  if let Some(values) = config.remove(key) {
+  if let Some(values) = config.shift_remove(key) {
     if let ConfigKeyValue::Array(values) = values {
       entries = Vec::with_capacity(values.len() * 2);
       for (i, value) in values.into_iter().enumerate() {
