@@ -65,3 +65,33 @@
     "a1": "asdf",
     "121212": "testing"
 }
+
+== should support hexadecimal numbers ==
+{
+    "prop": 0x123
+}
+
+[expect]
+{
+    "prop": 0x123
+}
+
+== should support words with underscores ==
+{
+    prop_test: 1234
+}
+
+[expect]
+{
+    "prop_test": 1234
+}
+
+== should support numbers with a plus sign ==
+{
+    "prop": +123
+}
+
+[expect]
+{
+    "prop": +123
+}
