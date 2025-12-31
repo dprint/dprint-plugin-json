@@ -35,5 +35,5 @@ text_lines = "0.6.0"
 
 [dev-dependencies]
 debug-here = "0.2"
-dprint-development = "0.10.1"
+dprint-development = "0.10.2"
 serde_json = { version = "1.0" }
