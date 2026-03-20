@@ -1,24 +1,20 @@
 use std::path::Path;
 
-use anyhow::bail;
 use anyhow::Result;
+use anyhow::bail;
 use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
-use jsonc_parser::parse_to_ast;
 use jsonc_parser::CollectOptions;
 use jsonc_parser::CommentCollectionStrategy;
 use jsonc_parser::ParseResult;
+use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
 use super::generation::generate;
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
   let result = format_text_inner(path, text, config)?;
-  if result == text {
-    Ok(None)
-  } else {
-    Ok(Some(result))
-  }
+  if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
 fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String> {

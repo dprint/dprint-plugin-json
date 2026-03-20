@@ -1,6 +1,6 @@
+use super::Configuration;
 use super::builder::ConfigurationBuilder;
 use super::types::TrailingCommaKind;
-use super::Configuration;
 use dprint_core::configuration::*;
 
 /// Resolves configuration from a collection of key value strings.

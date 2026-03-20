@@ -137,8 +137,8 @@ impl ConfigurationBuilder {
 
 #[cfg(test)]
 mod tests {
-  use dprint_core::configuration::resolve_global_config;
   use dprint_core::configuration::NewLineKind;
+  use dprint_core::configuration::resolve_global_config;
 
   use super::*;
 
