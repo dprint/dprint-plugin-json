@@ -92,11 +92,10 @@ fn gen_node_with_inner<'a>(
   }
 
   // get the trailing comments
-  if is_root || parent_end.is_some() && parent_end.unwrap() != node_end {
-    if let Some(comments) = context.comments.get(&node_end) {
+  if (is_root || parent_end.is_some() && parent_end.unwrap() != node_end)
+    && let Some(comments) = context.comments.get(&node_end) {
       items.extend(gen_comments_as_trailing(&node, comments.iter(), context));
     }
-  }
 
   context.current_node = context.parent_stack.pop();
 
@@ -206,7 +205,7 @@ fn gen_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> P
   items
 }
 
-const DOUBLE_QUOTE_SC: &'static StringContainer = sc!("\"");
+const DOUBLE_QUOTE_SC: &StringContainer = sc!("\"");
 
 fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> PrintItems {
   let text = node.text(context.text);
@@ -385,15 +384,14 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   items.push_sc(opts.open_token);
   if let Some(first_member) = opts.first_member {
     let first_member_start_line = context.text_info.line_index(first_member.start);
-    if open_token_start_line < first_member_start_line {
-      if let Some(trailing_comments) = context.comments.get(&open_token_end) {
+    if open_token_start_line < first_member_start_line
+      && let Some(trailing_comments) = context.comments.get(&open_token_end) {
         items.extend(gen_first_line_trailing_comment(
           open_token_start_line,
           trailing_comments.iter(),
           context,
         ));
       }
-    }
     items.extend(gen_inner(context));
 
     let before_trailing_comments_lc = LineAndColumn::new("beforeTrailingComments");
@@ -494,18 +492,15 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   ) -> PrintItems {
     let mut items = PrintItems::new();
     let mut comments = comments;
-    if let Some(first_comment) = comments.next() {
-      if first_comment.kind() == CommentKind::Line
+    if let Some(first_comment) = comments.next()
+      && first_comment.kind() == CommentKind::Line
         && context.text_info.line_index(first_comment.start()) == open_token_start_line
-      {
-        if let Some(generated_comment) = gen_comment(first_comment, context) {
+        && let Some(generated_comment) = gen_comment(first_comment, context) {
           items.push_signal(Signal::StartForceNoNewLines);
           items.push_space();
           items.extend(generated_comment);
           items.push_signal(Signal::FinishForceNoNewLines);
         }
-      }
-    }
     items
   }
 }
