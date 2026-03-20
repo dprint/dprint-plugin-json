@@ -1,8 +1,8 @@
 use super::super::configuration::Configuration;
 use super::token_finder::TokenFinder;
+use jsonc_parser::CommentMap;
 use jsonc_parser::ast::*;
 use jsonc_parser::common::Ranged;
-use jsonc_parser::CommentMap;
 use std::collections::HashSet;
 use text_lines::TextLines;
 

@@ -93,9 +93,10 @@ fn gen_node_with_inner<'a>(
 
   // get the trailing comments
   if (is_root || parent_end.is_some() && parent_end.unwrap() != node_end)
-    && let Some(comments) = context.comments.get(&node_end) {
-      items.extend(gen_comments_as_trailing(&node, comments.iter(), context));
-    }
+    && let Some(comments) = context.comments.get(&node_end)
+  {
+    items.extend(gen_comments_as_trailing(&node, comments.iter(), context));
+  }
 
   context.current_node = context.parent_stack.pop();
 
@@ -385,13 +386,14 @@ fn gen_surrounded_by_tokens<'a, 'b>(
   if let Some(first_member) = opts.first_member {
     let first_member_start_line = context.text_info.line_index(first_member.start);
     if open_token_start_line < first_member_start_line
-      && let Some(trailing_comments) = context.comments.get(&open_token_end) {
-        items.extend(gen_first_line_trailing_comment(
-          open_token_start_line,
-          trailing_comments.iter(),
-          context,
-        ));
-      }
+      && let Some(trailing_comments) = context.comments.get(&open_token_end)
+    {
+      items.extend(gen_first_line_trailing_comment(
+        open_token_start_line,
+        trailing_comments.iter(),
+        context,
+      ));
+    }
     items.extend(gen_inner(context));
 
     let before_trailing_comments_lc = LineAndColumn::new("beforeTrailingComments");
@@ -494,13 +496,14 @@ fn gen_surrounded_by_tokens<'a, 'b>(
     let mut comments = comments;
     if let Some(first_comment) = comments.next()
       && first_comment.kind() == CommentKind::Line
-        && context.text_info.line_index(first_comment.start()) == open_token_start_line
-        && let Some(generated_comment) = gen_comment(first_comment, context) {
-          items.push_signal(Signal::StartForceNoNewLines);
-          items.push_space();
-          items.extend(generated_comment);
-          items.push_signal(Signal::FinishForceNoNewLines);
-        }
+      && context.text_info.line_index(first_comment.start()) == open_token_start_line
+      && let Some(generated_comment) = gen_comment(first_comment, context)
+    {
+      items.push_signal(Signal::StartForceNoNewLines);
+      items.push_space();
+      items.extend(generated_comment);
+      items.push_signal(Signal::FinishForceNoNewLines);
+    }
     items
   }
 }
