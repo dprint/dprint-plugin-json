@@ -137,7 +137,7 @@ mod tests {
     let message = format_text(Path::new("."), "{},\n", &config).err().unwrap().to_string();
     assert_eq!(
       message,
-      "Line 1, column 3: Text cannot contain more than one JSON value\n\n  {},"
+      "Line 1, column 3: Text cannot contain more than one JSON value\n\n  {},\n    ~"
     );
   }
 
