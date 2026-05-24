@@ -47,6 +47,13 @@ const buildJob = job("build", {
       uses: "Swatinem/rust-cache@v2",
       with: { "save-if": "${{ github.ref == 'refs/heads/main' }}" },
     },
+    // deno is needed by the "Lint workflow generation" step (test_debug)
+    // and by the "Pre-release" step (test_release on tag). Install it
+    // once at the top of every job to keep the matrix steps simple.
+    {
+      uses: "denoland/setup-deno@v2",
+      with: { "deno-version": "v2.x" },
+    },
 
     { name: "Build debug", if: isDebug, run: "cargo build" },
     {
@@ -81,11 +88,6 @@ const buildJob = job("build", {
     },
 
     // GITHUB RELEASE
-    {
-      uses: "denoland/setup-deno@v2",
-      if: isReleaseAndTag,
-      with: { "deno-version": "v2.x" },
-    },
     {
       name: "Pre-release",
       if: isReleaseAndTag,

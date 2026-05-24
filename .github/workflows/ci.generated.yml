@@ -33,6 +33,9 @@ jobs:
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
         with:
           save-if: '${{ github.ref == ''refs/heads/main'' }}'
+      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+        with:
+          deno-version: v2.x
       - name: Build debug
         if: matrix.config.kind == 'test_debug'
         run: cargo build
@@ -61,10 +64,6 @@ jobs:
           npm install
           node setup.js
           npm run test
-      - uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
-        if: 'matrix.config.kind == ''test_release'' && startsWith(github.ref, ''refs/tags/'')'
-        with:
-          deno-version: v2.x
       - name: Pre-release
         if: 'matrix.config.kind == ''test_release'' && startsWith(github.ref, ''refs/tags/'')'
         run: |-
