@@ -1,0 +1,45 @@
+-- /file.jsonc --
+== should not drop comments that sit between the name, colon, value and comma (#24) ==
+// before-value (context: top-level)
+{
+  // before-key (context: object spot 0)
+  "k0"
+  // after-key (context: object spot 0)
+  :
+  // before-value (context: object spot 0)
+  "v0"
+  // after-value (context: object spot 0)
+  ,
+  // before-key (context: object spot 1)
+}
+// after-value (context: top-level)
+
+[expect]
+// before-value (context: top-level)
+{
+  // before-key (context: object spot 0)
+  "k0":
+  // after-key (context: object spot 0)
+  // before-value (context: object spot 0)
+  "v0"
+  // after-value (context: object spot 0)
+  ,
+  // before-key (context: object spot 1)
+}
+// after-value (context: top-level)
+
+== should not drop own-line comments between an array element and its comma ==
+[
+  1
+  // after-element
+  ,
+  2
+]
+
+[expect]
+[
+  1
+  // after-element
+  ,
+  2,
+]

@@ -200,9 +200,73 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
 fn gen_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> PrintItems {
   let mut items = PrintItems::new();
   items.extend(gen_node((&node.name).into(), context));
-  items.push_sc(sc!(": "));
+  items.push_sc(sc!(":"));
+
+  // Comments that sit on their own line between the property name and its value have no
+  // AST node to attach to (the colon is not a node), so without handling them here they'd
+  // be silently dropped. Emit them as statements; same-line comments are left to the
+  // regular trailing/leading comment handling.
+  let dangling_comments = gen_object_prop_dangling_comments(node, context);
+  if dangling_comments.is_empty() {
+    items.push_space();
+  } else {
+    // a trailing newline isn't pushed here: line comments already emit an `ExpectNewLine`,
+    // which separates them from the value that follows.
+    items.extend(dangling_comments);
+  }
+
   items.extend(gen_node((&node.value).into(), context));
 
+  items
+}
+
+// Comments between a property name and its value that sit on their own line. The "after-key"
+// comments are keyed at the name end and the "before-value" comments at the value start (see
+// the jsonc-parser comment map, which keys each comment group by both surrounding token ends).
+fn gen_object_prop_dangling_comments<'a: 'b, 'b>(node: &'a ObjectProp, context: &mut Context<'a, 'b>) -> PrintItems {
+  let name_end_line = context.text_info.line_index(node.name.end());
+  let groups: Vec<Rc<Vec<Comment<'a>>>> = [node.name.end(), node.value.start()]
+    .iter()
+    .filter_map(|key| context.comments.get(key).cloned())
+    .collect();
+  let mut dangling: Vec<&Comment<'a>> = Vec::new();
+  for group in &groups {
+    for comment in group.iter() {
+      if !context.has_handled_comment(comment) && context.text_info.line_index(comment.start()) > name_end_line {
+        dangling.push(comment);
+      }
+    }
+  }
+  dangling.sort_by_key(|c| c.start());
+
+  let mut items = PrintItems::new();
+  for comment in dangling {
+    items.push_signal(Signal::NewLine);
+    if let Some(generated) = gen_comment(comment, context) {
+      items.extend(generated);
+    }
+  }
+  items
+}
+
+// Comments that sit on their own line after the token ending at `prev_token_end` but which have
+// no AST node to attach to (e.g. between a value and its trailing comma). Without handling them
+// here they'd be silently dropped. Same-line comments are left to the regular handling.
+fn gen_dangling_comments_after<'a: 'b, 'b>(prev_token_end: usize, context: &mut Context<'a, 'b>) -> PrintItems {
+  let mut items = PrintItems::new();
+  let prev_end_line = context.text_info.line_index(prev_token_end);
+  let Some(comments) = context.comments.get(&prev_token_end).cloned() else {
+    return items;
+  };
+  for comment in comments.iter() {
+    if context.has_handled_comment(comment) || context.text_info.line_index(comment.start()) <= prev_end_line {
+      continue;
+    }
+    items.push_signal(Signal::NewLine);
+    if let Some(generated) = gen_comment(comment, context) {
+      items.extend(generated);
+    }
+  }
   items
 }
 
@@ -331,7 +395,17 @@ fn gen_comma_separated_value<'a>(
 
   if let Some(element) = value {
     let generated_comma = generated_comma.into_rc_path();
-    items.extend(gen_node_with_inner(element, context, move |mut items, _| {
+    let element_end = element.end();
+    let has_comma = comma_token.is_some();
+    items.extend(gen_node_with_inner(element, context, move |mut items, context| {
+      // Own-line comments between the element and its trailing comma have no AST node to attach
+      // to, so emit them here to avoid silently dropping them. Only relevant when a comma follows;
+      // otherwise comments after the element are handled as leading comments of the closing token.
+      if has_comma {
+        // a trailing newline isn't pushed here: line comments already emit an `ExpectNewLine`,
+        // which separates them from the comma that follows.
+        items.extend(gen_dangling_comments_after(element_end, context));
+      }
       // this Rc clone is necessary because we can't move the captured generated_comma out of this closure
       items.push_optional_path(generated_comma);
       items
