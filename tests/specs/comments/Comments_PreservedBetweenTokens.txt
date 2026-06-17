@@ -41,7 +41,7 @@
   1
   // after-element
   ,
-  2,
+  2
 ]
 
 == should keep an own-line block comment separated from the following token ==
@@ -55,7 +55,7 @@
 {
   "k":
   /* block */
-  "v",
+  "v"
 }
 
 == should separate mixed own-line block and line comments between tokens ==
@@ -71,5 +71,5 @@
   "k":
   /* a */
   // b
-  "v",
+  "v"
 }
