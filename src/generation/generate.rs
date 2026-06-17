@@ -200,9 +200,57 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
 fn gen_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> PrintItems {
   let mut items = PrintItems::new();
   items.extend(gen_node((&node.name).into(), context));
-  items.push_sc(sc!(": "));
+  items.push_sc(sc!(":"));
+
+  // Own-line comments between the name and value (the colon isn't a node) would be dropped, so
+  // emit them here. Line comments emit their own newline, so only add the space when there were none.
+  let dangling_comments = gen_dangling_comments(&[node.name.end(), node.value.start()], context);
+  if dangling_comments.is_empty() {
+    items.push_space();
+  } else {
+    items.extend(dangling_comments);
+  }
+
   items.extend(gen_node((&node.value).into(), context));
 
+  items
+}
+
+// Own-line comments in a slot with no AST node to attach to (e.g. between a property name and its
+// value, or a value and its trailing comma) match no leading/trailing emission path and would be
+// silently dropped. Emit them as statements. `keys` are the comment-map slots to check (jsonc-parser
+// keys each group by both surrounding token ends); comments on the same line as `keys[0]` are left
+// to the regular handling.
+fn gen_dangling_comments<'a: 'b, 'b>(keys: &[usize], context: &mut Context<'a, 'b>) -> PrintItems {
+  let mut items = PrintItems::new();
+  let Some(&after) = keys.first() else {
+    return items;
+  };
+  let after_line = context.text_info.line_index(after);
+  let mut dangling: Vec<&'b Comment<'a>> = keys
+    .iter()
+    .filter_map(|key| context.comments.get(key))
+    .flat_map(|group| group.iter())
+    .filter(|c| !context.has_handled_comment(c) && context.text_info.line_index(c.start()) > after_line)
+    .collect();
+  dangling.sort_by_key(|c| c.start());
+  // jsonc-parser stores the same comment group under both surrounding token ends, so a comment can
+  // appear under two of `keys`; drop the duplicates so it isn't emitted (with its newline) twice.
+  dangling.dedup_by_key(|c| c.start());
+
+  let mut last_was_block = false;
+  for comment in dangling {
+    if let Some(generated) = gen_comment(comment, context) {
+      items.push_signal(Signal::NewLine);
+      items.extend(generated);
+      last_was_block = comment.kind() == CommentKind::Block;
+    }
+  }
+  // A block comment doesn't end its line, so without a trailing newline the following token (the
+  // value or comma) would glue onto it. Line comments self-terminate, so they need nothing here.
+  if last_was_block {
+    items.push_signal(Signal::NewLine);
+  }
   items
 }
 
@@ -331,7 +379,14 @@ fn gen_comma_separated_value<'a>(
 
   if let Some(element) = value {
     let generated_comma = generated_comma.into_rc_path();
-    items.extend(gen_node_with_inner(element, context, move |mut items, _| {
+    let element_end = element.end();
+    let has_comma = comma_token.is_some();
+    items.extend(gen_node_with_inner(element, context, move |mut items, context| {
+      // Own-line comments between the element and its trailing comma would be dropped, so emit them
+      // here. Only when a comma follows; otherwise they're the closing token's leading comments.
+      if has_comma {
+        items.extend(gen_dangling_comments(&[element_end], context));
+      }
       // this Rc clone is necessary because we can't move the captured generated_comma out of this closure
       items.push_optional_path(generated_comma);
       items
