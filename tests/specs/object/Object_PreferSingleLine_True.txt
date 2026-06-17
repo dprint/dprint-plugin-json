@@ -15,6 +15,6 @@
   "prop": { "test": 2 },
   "prop2": {
     "testing this out": 2,
-    "testing testing test": 5
+    "testing testing test": 5,
   }
 }
