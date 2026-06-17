@@ -234,12 +234,22 @@ fn gen_dangling_comments<'a: 'b, 'b>(keys: &[usize], context: &mut Context<'a, '
     .filter(|c| !context.has_handled_comment(c) && context.text_info.line_index(c.start()) > after_line)
     .collect();
   dangling.sort_by_key(|c| c.start());
+  // jsonc-parser stores the same comment group under both surrounding token ends, so a comment can
+  // appear under two of `keys`; drop the duplicates so it isn't emitted (with its newline) twice.
+  dangling.dedup_by_key(|c| c.start());
 
+  let mut last_was_block = false;
   for comment in dangling {
-    items.push_signal(Signal::NewLine);
     if let Some(generated) = gen_comment(comment, context) {
+      items.push_signal(Signal::NewLine);
       items.extend(generated);
+      last_was_block = comment.kind() == CommentKind::Block;
     }
+  }
+  // A block comment doesn't end its line, so without a trailing newline the following token (the
+  // value or comma) would glue onto it. Line comments self-terminate, so they need nothing here.
+  if last_was_block {
+    items.push_signal(Signal::NewLine);
   }
   items
 }
