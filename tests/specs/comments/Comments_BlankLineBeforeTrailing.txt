@@ -1,0 +1,64 @@
+-- /file.jsonc --
+== should preserve a blank line before trailing comments at the end of an object (#34) ==
+{
+  // This is a setting.
+  "foo": "",
+
+  // These settings are temporarily commented out.
+  // "baz": "",
+  // "qux": ""
+}
+
+[expect]
+{
+  // This is a setting.
+  "foo": "",
+
+  // These settings are temporarily commented out.
+  // "baz": "",
+  // "qux": ""
+}
+
+== should preserve a blank line before trailing comments at the end of an array ==
+[
+  "foo",
+
+  // trailing comment
+  // another
+]
+
+[expect]
+[
+  "foo",
+
+  // trailing comment
+  // another
+]
+
+== should not add a blank line before trailing comments when the source had none ==
+{
+  "foo": ""
+  // trailing comment
+}
+
+[expect]
+{
+  "foo": ""
+  // trailing comment
+}
+
+== should collapse multiple blank lines before trailing comments to one ==
+{
+  "foo": ""
+
+
+
+  // trailing comment
+}
+
+[expect]
+{
+  "foo": ""
+
+  // trailing comment
+}

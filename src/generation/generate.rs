@@ -458,6 +458,15 @@ fn gen_surrounded_by_tokens<'a, 'b>(
       context,
     )));
     if let Some(leading_comments) = context.comments.get(&close_token_start) {
+      // the separating newline is emitted elsewhere, so only add a newline for a blank line in the source
+      if let Some(start) = leading_comments.first().map(|c| c.start()) {
+        let comment_start_line = context.text_info.line_index(start);
+        if let Some(prev_token) = context.token_finder.get_previous_token(&Range::from_byte_index(start))
+          && comment_start_line > context.text_info.line_index(prev_token.end()) + 1
+        {
+          items.push_signal(Signal::NewLine);
+        }
+      }
       items.extend(ir_helpers::with_indent(gen_comments_as_statements(
         leading_comments.iter(),
         None,

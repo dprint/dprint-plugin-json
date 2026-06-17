@@ -85,13 +85,13 @@
     "trailingCommas": {
       "description": "Whether to use trailing commas.",
       "type": "string",
-      "default": "jsonc",
+      "default": "maintain",
       "oneOf": [{
         "const": "always",
         "description": "Always format with trailing commas. Beware: trailing commas can cause many JSON parsers to fail."
       }, {
         "const": "jsonc",
-        "description": "Use trailing commas in JSONC files and do not use trailing commas in JSON files."
+        "description": "Use trailing commas in JSONC files and do not use trailing commas in JSON files. Beware: trailing commas can cause some JSONC parsers to fail."
       }, {
         "const": "maintain",
         "description": "Keep the trailing comma if it exists."

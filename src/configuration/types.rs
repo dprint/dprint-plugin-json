@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 pub enum TrailingCommaKind {
   /// Always format with trailing commas. Beware: trailing commas can cause many JSON parsers to fail.
   Always,
-  /// Use trailing commas in JSONC files and do not use trailing commas in JSON files. (Default)
+  /// Use trailing commas in JSONC files and do not use trailing commas in JSON files. Beware: trailing commas can cause some JSONC parsers to fail.
   Jsonc,
-  /// Keep the trailing comma if it exists.
+  /// Keep the trailing comma if it exists. (Default)
   Maintain,
   /// Never format with trailing commas.
   Never,

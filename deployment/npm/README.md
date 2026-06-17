@@ -2,7 +2,7 @@
 
 npm distribution of [dprint-plugin-json](https://github.com/dprint/dprint-plugin-json).
 
-Use this with [@dprint/formatter](https://github.com/dprint/js-formatter) or just use @dprint/formatter and download the [dprint-plugin-json WASM file](https://github.com/dprint/dprint-plugin-json/releases).
+Use this with [@dprint/formatter](https://github.com/dprint/js-formatter) or just use @dprint/formatter and download the [dprint-plugin-json Wasm file](https://github.com/dprint/dprint-plugin-json/releases).
 
 ## Example
 

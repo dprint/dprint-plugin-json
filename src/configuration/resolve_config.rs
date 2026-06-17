@@ -96,7 +96,7 @@ pub fn resolve_config(
     trailing_commas: get_value(
       &mut config,
       "trailingCommas",
-      TrailingCommaKind::Jsonc,
+      TrailingCommaKind::Maintain,
       &mut diagnostics,
     ),
     json_trailing_comma_files: get_trailing_comma_files(&mut config, "jsonTrailingCommaFiles", &mut diagnostics),
