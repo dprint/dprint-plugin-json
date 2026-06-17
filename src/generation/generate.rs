@@ -202,8 +202,8 @@ fn gen_object_prop<'a>(node: &'a ObjectProp, context: &mut Context<'a, '_>) -> P
   items.extend(gen_node((&node.name).into(), context));
   items.push_sc(sc!(":"));
 
-  // own-line comments between the name and value (the colon isn't a node) would be dropped, so
-  // emit them here. line comments emit their own newline, so only add the space when there were none.
+  // Own-line comments between the name and value (the colon isn't a node) would be dropped, so
+  // emit them here. Line comments emit their own newline, so only add the space when there were none.
   let dangling_comments = gen_dangling_comments(&[node.name.end(), node.value.start()], context);
   if dangling_comments.is_empty() {
     items.push_space();
