@@ -43,7 +43,7 @@
 
 [expect]
 {
-  "foo": "",
+  "foo": ""
   // trailing comment
 }
 
@@ -58,7 +58,7 @@
 
 [expect]
 {
-  "foo": "",
+  "foo": ""
 
   // trailing comment
 }
