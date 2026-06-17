@@ -5,3 +5,17 @@
 JSON formatting plugin for [dprint](https://github.com/dprint/dprint).
 
 This uses the [jsonc-parser](https://github.com/dprint/jsonc-parser) parser.
+
+## Install
+
+[Install](https://dprint.dev/install/) and [setup](https://dprint.dev/setup/) dprint.
+
+Then in your project's directory with a dprint.json file, run:
+
+```shellsession
+dprint add json
+# or install from npm
+dprint add npm:@dprint/json
+```
+
+See https://dprint.dev/plugins/json/ for more information.
