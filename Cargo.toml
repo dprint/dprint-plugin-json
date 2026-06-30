@@ -22,16 +22,19 @@ panic = "abort"
 
 [features]
 wasm = ["serde_json", "dprint-core/wasm"]
-tracing = ["dprint-core/tracing"]
+# The AST/IR generator (used only for trace output) is the only thing that
+# still needs a parser; the normal formatter works straight off the bytes.
+tracing = ["dprint-core/tracing", "dep:jsonc-parser", "dep:text_lines", "dep:dprint-core-macros"]
 
 [dependencies]
 anyhow = "1.0.64"
 dprint-core = { version = "0.67.4", features = ["formatting"] }
-dprint-core-macros = "0.1.0"
-jsonc-parser = { version = "0.32.4", features = ["error_unicode_width"] }
+dprint-core-macros = { version = "0.1.0", optional = true }
+jsonc-parser = { version = "0.32.4", features = ["error_unicode_width"], optional = true }
 serde = { version = "1.0.144", features = ["derive"] }
 serde_json = { version = "1.0", optional = true }
-text_lines = "0.6.0"
+text_lines = { version = "0.6.0", optional = true }
+unicode-width = "0.2.0"
 
 [dev-dependencies]
 debug-here = "0.2"

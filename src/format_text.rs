@@ -2,15 +2,9 @@ use std::path::Path;
 
 use anyhow::Result;
 use anyhow::bail;
-use dprint_core::configuration::resolve_new_line_kind;
-use dprint_core::formatting::PrintOptions;
-use jsonc_parser::CollectOptions;
-use jsonc_parser::CommentCollectionStrategy;
-use jsonc_parser::ParseResult;
-use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
-use super::generation::generate;
+use crate::streaming::format_streaming;
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
   let result = format_text_inner(path, text, config)?;
@@ -19,29 +13,27 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Op
 
 fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String> {
   let text = strip_bom(text);
-  let parse_result = parse(text)?;
   let is_jsonc = is_jsonc_file(path, config);
-  Ok(dprint_core::formatting::format(
-    || generate(parse_result, text, config, is_jsonc),
-    config_to_print_options(text, config),
-  ))
+  match format_streaming(text.as_bytes(), config, is_jsonc) {
+    // Input is valid UTF-8 (`&str`) and the formatter only rearranges/copies its
+    // bytes, so the output is always valid UTF-8.
+    Ok(bytes) => Ok(String::from_utf8(bytes).expect("formatted output is valid UTF-8")),
+    Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
+      Some((err.start, err.end)),
+      err.message,
+      text,
+    )),
+  }
 }
 
 #[cfg(feature = "tracing")]
 pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting::TracingResult {
-  let parse_result = parse(text).unwrap();
+  use dprint_core::configuration::resolve_new_line_kind;
+  use dprint_core::formatting::PrintOptions;
+  use jsonc_parser::CollectOptions;
+  use jsonc_parser::CommentCollectionStrategy;
+  use jsonc_parser::parse_to_ast;
 
-  dprint_core::formatting::trace_printing(
-    || generate(parse_result, text, config),
-    config_to_print_options(text, config),
-  )
-}
-
-fn strip_bom(text: &str) -> &str {
-  text.strip_prefix("\u{FEFF}").unwrap_or(text)
-}
-
-fn parse(text: &str) -> Result<ParseResult<'_>> {
   let parse_result = parse_to_ast(
     text,
     &CollectOptions {
@@ -49,24 +41,22 @@ fn parse(text: &str) -> Result<ParseResult<'_>> {
       tokens: true,
     },
     &Default::default(),
-  );
-  match parse_result {
-    Ok(result) => Ok(result),
-    Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
-      Some((err.range().start, err.range().end)),
-      &err.kind().to_string(),
-      text,
-    )),
-  }
+  )
+  .unwrap();
+
+  dprint_core::formatting::trace_printing(
+    || crate::generation::generate(parse_result, text, config, false),
+    PrintOptions {
+      indent_width: config.indent_width,
+      max_width: config.line_width,
+      use_tabs: config.use_tabs,
+      new_line_text: resolve_new_line_kind(text, config.new_line_kind),
+    },
+  )
 }
 
-fn config_to_print_options(text: &str, config: &Configuration) -> PrintOptions {
-  PrintOptions {
-    indent_width: config.indent_width,
-    max_width: config.line_width,
-    use_tabs: config.use_tabs,
-    new_line_text: resolve_new_line_kind(text, config.new_line_kind),
-  }
+fn strip_bom(text: &str) -> &str {
+  text.strip_prefix("\u{FEFF}").unwrap_or(text)
 }
 
 fn is_jsonc_file(path: &Path, config: &Configuration) -> bool {
