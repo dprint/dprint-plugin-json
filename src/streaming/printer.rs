@@ -1,165 +1,11 @@
-//! Format JSON/JSONC directly off a stream of bytes (issue #30).
-//!
-//! Single pass tokenize + recursive emit, no AST and no dprint-core IR/print
-//! engine. Works on `&[u8]` so invalid UTF-8 inside strings passes through.
-//!
-//! Comments are handled positionally: each token records how many newlines
-//! preceded it, which is enough to tell a same-line trailing comment from an
-//! own-line one (and to place a comma that sits on its own line after a
-//! comment). Width is measured in chars, not unicode display width — exact for
-//! ASCII, approximate for wide CJK/emoji.
+//! The emit engine for the streaming formatter: turns a validated token stream
+//! into formatted bytes. Tracks the output column for unicode-aware width
+//! decisions and places comments positionally.
 
 use dprint_core::configuration::NewLineKind;
 
-use crate::configuration::Configuration;
-use crate::configuration::TrailingCommaKind;
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Kind {
-  ObjOpen,
-  ObjClose,
-  ArrOpen,
-  ArrClose,
-  Comma,
-  Colon,
-  String,
-  Word, // number / true / false / null / bare word key
-  Line, // // comment
-  Block, // /* */ comment
-}
-
-#[derive(Clone, Copy)]
-struct Token {
-  kind: Kind,
-  start: usize,
-  end: usize,
-  nl_before: u32,
-}
-
-/// A syntax error found by the streaming formatter (it validates as it goes
-/// instead of delegating to a parser). `start`/`end` are byte offsets.
-#[derive(Debug)]
-pub struct StreamError {
-  pub start: usize,
-  pub end: usize,
-  pub message: &'static str,
-}
-
-fn tokenize(src: &[u8]) -> Result<Vec<Token>, StreamError> {
-  let mut toks = Vec::new();
-  let mut i = 0;
-  let mut nl_before = 0u32;
-  let n = src.len();
-  while i < n {
-    let b = src[i];
-    match b {
-      b' ' | b'\t' | b'\r' => i += 1,
-      b'\n' => {
-        nl_before += 1;
-        i += 1;
-      }
-      b'/' => {
-        // comment
-        if i + 1 >= n || !matches!(src[i + 1], b'/' | b'*') {
-          return Err(StreamError { start: i, end: i + 1, message: "Unexpected token" });
-        }
-        match src[i + 1] {
-          b'/' => {
-            let start = i;
-            i += 2;
-            while i < n && src[i] != b'\n' {
-              i += 1;
-            }
-            // exclude a trailing \r
-            let mut end = i;
-            if end > start + 2 && src[end - 1] == b'\r' {
-              end -= 1;
-            }
-            toks.push(Token { kind: Kind::Line, start, end, nl_before });
-          }
-          _ => {
-            let start = i;
-            i += 2;
-            loop {
-              if i + 1 >= n {
-                return Err(StreamError { start, end: n, message: "Unterminated comment block" });
-              }
-              if src[i] == b'*' && src[i + 1] == b'/' {
-                i += 2;
-                break;
-              }
-              i += 1;
-            }
-            toks.push(Token { kind: Kind::Block, start, end: i, nl_before });
-          }
-        }
-        nl_before = 0;
-      }
-      b'{' | b'}' | b'[' | b']' | b',' | b':' => {
-        let kind = match b {
-          b'{' => Kind::ObjOpen,
-          b'}' => Kind::ObjClose,
-          b'[' => Kind::ArrOpen,
-          b']' => Kind::ArrClose,
-          b',' => Kind::Comma,
-          _ => Kind::Colon,
-        };
-        toks.push(Token { kind, start: i, end: i + 1, nl_before });
-        nl_before = 0;
-        i += 1;
-      }
-      b'"' | b'\'' => {
-        let quote = b;
-        let start = i;
-        i += 1;
-        loop {
-          if i >= n {
-            return Err(StreamError { start, end: n, message: "Unterminated string literal" });
-          }
-          let c = src[i];
-          if c == b'\\' {
-            i += 2;
-          } else if c == quote {
-            i += 1;
-            break;
-          } else {
-            i += 1;
-          }
-        }
-        toks.push(Token { kind: Kind::String, start, end: i, nl_before });
-        nl_before = 0;
-      }
-      _ => {
-        let start = i;
-        while i < n {
-          let c = src[i];
-          if c.is_ascii_whitespace() || matches!(c, b'{' | b'}' | b'[' | b']' | b',' | b':' | b'"' | b'\'' | b'/') {
-            break;
-          }
-          i += 1;
-        }
-        if i == start {
-          return Err(StreamError { start, end: start + 1, message: "Unexpected token" });
-        }
-        toks.push(Token { kind: Kind::Word, start, end: i, nl_before });
-        nl_before = 0;
-      }
-    }
-  }
-  Ok(toks)
-}
-
-fn is_comment(k: Kind) -> bool {
-  matches!(k, Kind::Line | Kind::Block)
-}
-
-fn is_close(k: Kind) -> bool {
-  matches!(k, Kind::ObjClose | Kind::ArrClose)
-}
-
-fn is_open(k: Kind) -> bool {
-  matches!(k, Kind::ObjOpen | Kind::ArrOpen)
-}
+use crate::configuration::{Configuration, TrailingCommaKind};
+use super::{Kind, Token, is_close, is_comment, is_open};
 
 /// Previous emitted token kind, for picking single-line separators.
 #[derive(PartialEq)]
@@ -283,7 +129,7 @@ impl<'a> Printer<'a> {
       } else {
         non_slash
       };
-      let rest = trim_ascii_end(&text[start..]);
+      let rest = text[start..].trim_ascii_end();
       buf.extend_from_slice(b"//");
       buf.extend_from_slice(&text[..non_slash]); // extra slashes
       if !rest.is_empty() {
@@ -316,6 +162,16 @@ impl<'a> Printer<'a> {
     let mut buf = Vec::new();
     self.render_comment(&self.toks[idx], &mut buf);
     self.emit(&buf);
+  }
+
+  /// Place a comment on its own line at `level`, optionally preceded by a blank.
+  fn emit_own_line_comment(&mut self, idx: usize, level: usize, blank: bool) {
+    self.nl();
+    if blank {
+      self.nl();
+    }
+    self.indent(level);
+    self.emit_comment(idx);
   }
 
   fn is_ignore(&self, idx: usize) -> bool {
@@ -546,12 +402,7 @@ impl<'a> Printer<'a> {
             // An object element that itself renders multi-line (a "breaker", or
             // an empty `{\n}`) makes the array span multiple lines too — either
             // inline mode or a full break — so the array is multi-line.
-            let obj_multiline = if self.toks[idx + 1].kind == Kind::ObjClose {
-              self.originally_multiline(idx)
-            } else {
-              self.structurally_multiline(idx) || self.has_forcing_comment(idx)
-            };
-            if obj_multiline {
+            if self.object_renders_multiline(idx) {
               return true;
             }
           } else if self.structurally_multiline(idx) {
@@ -602,33 +453,37 @@ impl<'a> Printer<'a> {
       return self.print_array(i, level, trailing);
     }
 
-    // object: flat or full multi-line
-    let multiline = if self.has_forcing_comment(i) {
-      true
-    } else {
-      let mut s = Vec::new();
-      let _ = self.flat_value(i, &mut s);
-      let fits = self.col + char_width(&s) + trailing <= self.line_width;
-      !fits || self.structurally_multiline(i)
-    };
-
-    if !multiline {
-      let mut s = Vec::new();
-      let next = self.flat_value(i, &mut s);
-      self.emit(&s);
-      return next;
+    // object: flat or full multi-line. Skip the flat render entirely when a
+    // comment already forces multi-line; otherwise render it once and reuse it
+    // for both the width check and the emit.
+    if !self.has_forcing_comment(i) {
+      let mut flat = Vec::new();
+      let next = self.flat_value(i, &mut flat);
+      let fits = self.col + char_width(&flat) + trailing <= self.line_width;
+      if fits && !self.structurally_multiline(i) {
+        self.emit(&flat);
+        return next;
+      }
     }
 
     let preserve_blanks = !self.object_prefer_single_line && self.originally_multiline(i);
     self.print_container_multiline(i, level, false, preserve_blanks)
   }
 
+  /// Does the object value at `idx` render multi-line (empty `{\n}`, or a
+  /// non-empty object forced by content/comments)?
+  fn object_renders_multiline(&self, idx: usize) -> bool {
+    if self.toks[idx + 1].kind == Kind::ObjClose {
+      self.originally_multiline(idx)
+    } else {
+      self.structurally_multiline(idx) || self.has_forcing_comment(idx)
+    }
+  }
+
   /// Is `idx` a non-empty object that will render multi-line? Such an element
   /// can stay "inline multi-line" inside an otherwise single-line array.
   fn is_breaker(&self, idx: usize) -> bool {
-    self.toks[idx].kind == Kind::ObjOpen
-      && self.toks[idx + 1].kind != Kind::ObjClose
-      && (self.structurally_multiline(idx) || self.has_forcing_comment(idx))
+    self.toks[idx].kind == Kind::ObjOpen && self.toks[idx + 1].kind != Kind::ObjClose && self.object_renders_multiline(idx)
   }
 
   /// Arrays have three layouts: flat, full multi-line (one element per line),
@@ -765,12 +620,8 @@ impl<'a> Printer<'a> {
       if is_comment(k) {
         let own_line = self.toks[idx].nl_before > 0 || last_was_statement;
         if own_line {
-          self.nl();
-          if started && preserve_blanks && self.toks[idx].nl_before >= 2 {
-            self.nl();
-          }
-          self.indent(inner);
-          self.emit_comment(idx);
+          let blank = started && preserve_blanks && self.toks[idx].nl_before >= 2;
+          self.emit_own_line_comment(idx, inner, blank);
           started = true;
           last_was_statement = true;
           pending_ignore = self.is_ignore(idx);
@@ -825,15 +676,13 @@ impl<'a> Printer<'a> {
     let trailing = if emit_comma { 1 } else { 0 };
 
     if pending_ignore {
-      // emit the node verbatim from source
-      let start = self.src_start(idx, is_array);
-      let end = self.toks[value_end - 1].end;
-      let raw = self.src[start..end].to_vec();
+      // emit the node verbatim from source (key/element start .. value end)
+      let raw = self.src[self.toks[idx].start..self.toks[value_end - 1].end].to_vec();
       self.emit(&raw);
     } else if is_array {
       self.print_value(value_idx, level, trailing);
     } else {
-      self.emit_object_property(idx, value_idx, level, trailing, pending_ignore);
+      self.emit_object_property(idx, value_idx, level, trailing);
     }
 
     // own-line comments between the value and the comma (e.g. `1 // c\n ,`)
@@ -845,9 +694,7 @@ impl<'a> Printer<'a> {
             self.space();
             self.emit_comment(g);
           } else {
-            self.nl();
-            self.indent(level);
-            self.emit_comment(g);
+            self.emit_own_line_comment(g, level, false);
           }
         }
         g += 1;
@@ -870,11 +717,7 @@ impl<'a> Printer<'a> {
     }
   }
 
-  fn src_start(&self, member_idx: usize, _is_array: bool) -> usize {
-    self.toks[member_idx].start
-  }
-
-  fn emit_object_property(&mut self, key_idx: usize, value_idx: usize, level: usize, trailing: usize, _ignore: bool) {
+  fn emit_object_property(&mut self, key_idx: usize, value_idx: usize, level: usize, trailing: usize) {
     let mut kb = Vec::new();
     self.render_key(&self.toks[key_idx], &mut kb);
     self.emit(&kb);
@@ -892,9 +735,7 @@ impl<'a> Printer<'a> {
 
     for &g in &gap {
       if self.toks[g].nl_before > 0 {
-        self.nl();
-        self.indent(level);
-        self.emit_comment(g);
+        self.emit_own_line_comment(g, level, false);
       } else {
         self.space();
         self.emit_comment(g);
@@ -944,11 +785,7 @@ impl<'a> Printer<'a> {
         self.space();
         self.emit_comment(idx);
       } else {
-        self.nl();
-        if self.toks[idx].nl_before >= 2 {
-          self.nl();
-        }
-        self.emit_comment(idx);
+        self.emit_own_line_comment(idx, 0, self.toks[idx].nl_before >= 2);
       }
       idx += 1;
     }
@@ -959,14 +796,6 @@ impl<'a> Printer<'a> {
       self.nl();
     }
   }
-}
-
-fn trim_ascii_end(b: &[u8]) -> &[u8] {
-  let mut end = b.len();
-  while end > 0 && b[end - 1].is_ascii_whitespace() {
-    end -= 1;
-  }
-  &b[..end]
 }
 
 fn text_has_dprint_ignore(text: &[u8], searching: &[u8]) -> bool {
@@ -991,153 +820,6 @@ fn text_has_dprint_ignore(text: &[u8], searching: &[u8]) -> bool {
 /// Validates the token stream as JSON/JSONC grammar in a single pass, so the
 /// formatter needs no separate parser. Word tokens are checked only by their
 /// first character — enough to reject genuine garbage (`&`, a zero-width space)
-/// at the right position while staying lenient about the rest.
-struct Validator<'a> {
-  toks: &'a [Token],
-  src: &'a [u8],
-  i: usize,
-}
-
-impl Validator<'_> {
-  fn skip_comments(&mut self) {
-    while self.i < self.toks.len() && is_comment(self.toks[self.i].kind) {
-      self.i += 1;
-    }
-  }
-
-  fn eof(&self) -> StreamError {
-    StreamError {
-      start: self.src.len(),
-      end: self.src.len(),
-      message: "Unexpected end of text",
-    }
-  }
-
-  fn first_char(&self, t: &Token) -> Option<char> {
-    std::str::from_utf8(&self.src[t.start..t.end]).ok().and_then(|s| s.chars().next())
-  }
-
-  fn check_word(&self, t: &Token) -> Result<(), StreamError> {
-    let ok = matches!(self.first_char(t), Some(c) if c.is_alphanumeric() || matches!(c, '_' | '$' | '+' | '-' | '.'));
-    if ok {
-      Ok(())
-    } else {
-      let len = self.first_char(t).map(|c| c.len_utf8()).unwrap_or(1);
-      Err(StreamError { start: t.start, end: t.start + len, message: "Unexpected token" })
-    }
-  }
-
-  fn unexpected(&self, t: &Token) -> StreamError {
-    StreamError { start: t.start, end: t.end, message: "Unexpected token" }
-  }
-
-  fn value(&mut self) -> Result<(), StreamError> {
-    self.skip_comments();
-    if self.i >= self.toks.len() {
-      return Err(self.eof());
-    }
-    let t = self.toks[self.i];
-    match t.kind {
-      Kind::String => {
-        self.i += 1;
-        Ok(())
-      }
-      Kind::Word => {
-        self.check_word(&t)?;
-        self.i += 1;
-        Ok(())
-      }
-      Kind::ObjOpen => self.object(),
-      Kind::ArrOpen => self.array(),
-      _ => Err(self.unexpected(&t)),
-    }
-  }
-
-  fn object(&mut self) -> Result<(), StreamError> {
-    self.i += 1; // {
-    loop {
-      self.skip_comments();
-      if self.i >= self.toks.len() {
-        return Err(self.eof());
-      }
-      let t = self.toks[self.i];
-      if t.kind == Kind::ObjClose {
-        self.i += 1;
-        return Ok(());
-      }
-      // key
-      match t.kind {
-        Kind::String => {}
-        Kind::Word => self.check_word(&t)?,
-        _ => return Err(self.unexpected(&t)),
-      }
-      self.i += 1;
-      // colon
-      self.skip_comments();
-      match self.toks.get(self.i) {
-        Some(c) if c.kind == Kind::Colon => self.i += 1,
-        Some(c) => return Err(self.unexpected(c)),
-        None => return Err(self.eof()),
-      }
-      self.value()?;
-      // comma or close
-      self.skip_comments();
-      match self.toks.get(self.i) {
-        Some(c) if c.kind == Kind::Comma => self.i += 1,
-        Some(c) if c.kind == Kind::ObjClose => {
-          self.i += 1;
-          return Ok(());
-        }
-        Some(c) => return Err(self.unexpected(c)),
-        None => return Err(self.eof()),
-      }
-    }
-  }
-
-  fn array(&mut self) -> Result<(), StreamError> {
-    self.i += 1; // [
-    loop {
-      self.skip_comments();
-      if self.i >= self.toks.len() {
-        return Err(self.eof());
-      }
-      if self.toks[self.i].kind == Kind::ArrClose {
-        self.i += 1;
-        return Ok(());
-      }
-      self.value()?;
-      self.skip_comments();
-      match self.toks.get(self.i) {
-        Some(c) if c.kind == Kind::Comma => self.i += 1,
-        Some(c) if c.kind == Kind::ArrClose => {
-          self.i += 1;
-          return Ok(());
-        }
-        Some(c) => return Err(self.unexpected(c)),
-        None => return Err(self.eof()),
-      }
-    }
-  }
-}
-
-fn validate(toks: &[Token], src: &[u8]) -> Result<(), StreamError> {
-  let mut v = Validator { toks, src, i: 0 };
-  v.skip_comments();
-  if v.i >= toks.len() {
-    return Ok(()); // empty file or comments only
-  }
-  v.value()?;
-  v.skip_comments();
-  if v.i < toks.len() {
-    let t = &toks[v.i];
-    return Err(StreamError {
-      start: t.start,
-      end: t.end,
-      message: "Text cannot contain more than one JSON value",
-    });
-  }
-  Ok(())
-}
 
 fn resolve_newline(src: &[u8], kind: NewLineKind) -> &'static [u8] {
   match kind {
@@ -1160,21 +842,19 @@ fn resolve_newline(src: &[u8], kind: NewLineKind) -> &'static [u8] {
 
 /// Format JSON/JSONC bytes directly, no parser. Validates the grammar itself
 /// and returns `Err` with a byte range + message on a syntax error. Works on
-/// arbitrary bytes — invalid UTF-8 inside strings is preserved.
-pub fn format_streaming(src: &[u8], config: &Configuration, is_jsonc: bool) -> Result<Vec<u8>, StreamError> {
-  let toks = tokenize(src)?;
-  validate(&toks, src)?;
-  let any_comments = toks.iter().any(|t| is_comment(t.kind));
+
+/// Build a printer and format the (already validated) token stream.
+pub(super) fn format(src: &[u8], toks: &[Token], config: &Configuration, is_jsonc: bool) -> Vec<u8> {
   let mut p = Printer {
     src,
-    toks: &toks,
+    toks,
     out: Vec::with_capacity(src.len()),
     col: 0,
     line_width: config.line_width as usize,
     indent_width: config.indent_width as usize,
     use_tabs: config.use_tabs,
     is_jsonc,
-    any_comments,
+    any_comments: toks.iter().any(|t| is_comment(t.kind)),
     force_space_after_slashes: config.comment_line_force_space_after_slashes,
     ignore_text: &config.ignore_node_comment_text,
     trailing_commas: config.trailing_commas,
@@ -1183,40 +863,5 @@ pub fn format_streaming(src: &[u8], config: &Configuration, is_jsonc: bool) -> R
     newline: resolve_newline(src, config.new_line_kind),
   };
   p.emit_root();
-  Ok(p.out)
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use crate::configuration::{ConfigurationBuilder, resolve_config};
-  use dprint_core::configuration::{ConfigKeyMap, GlobalConfiguration};
-
-  fn default_config() -> Configuration {
-    let _ = ConfigurationBuilder::new();
-    resolve_config(ConfigKeyMap::new(), &GlobalConfiguration::default()).config
-  }
-
-  #[test]
-  fn formats_invalid_utf8_in_strings() {
-    // issue #5: a string holding bytes that are not valid UTF-8. Formatting it
-    // off a byte stream must not error or mangle the bytes (a parser that
-    // assumes UTF-8 cannot do this).
-    let mut input = b"{\n\"a\":\"".to_vec();
-    input.extend_from_slice(&[0xed, 0xa0, 0xb4]); // lone surrogate, invalid UTF-8
-    input.extend_from_slice(b"\"}");
-    let out = format_streaming(&input, &default_config(), false).expect("should format");
-    // bytes preserved verbatim inside the string (input was written multi-line)
-    let mut expected = b"{\n  \"a\": \"".to_vec();
-    expected.extend_from_slice(&[0xed, 0xa0, 0xb4]);
-    expected.extend_from_slice(b"\"\n}\n");
-    assert_eq!(out, expected);
-  }
-
-  #[test]
-  fn reports_syntax_error_without_a_parser() {
-    let err = format_streaming(b"{ &*&* }", &default_config(), false).err().unwrap();
-    assert_eq!(err.message, "Unexpected token");
-    assert_eq!((err.start, err.end), (2, 3)); // the `&`
-  }
+  p.out
 }
