@@ -16,14 +16,19 @@ use super::generation::generate;
 /// The [`Display`](std::fmt::Display) output is a formatted diagnostic, while
 /// the underlying [`ParseError`] can be recovered via [`Error::source`](std::error::Error::source).
 #[derive(Debug, thiserror::Error)]
-#[error("{message}")]
+#[error("{diagnostic}")]
 pub struct FormatError {
-  message: String,
+  diagnostic: String,
   #[source]
   source: ParseError,
 }
 
 impl FormatError {
+  /// The error message without position or source highlight (ex. `Unexpected token`).
+  pub fn message(&self) -> String {
+    self.source.kind().to_string()
+  }
+
   /// The parser error that caused this formatting error.
   pub fn parse_error(&self) -> &ParseError {
     &self.source
@@ -71,12 +76,12 @@ fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
   match parse_result {
     Ok(result) => Ok(result),
     Err(err) => {
-      let message = dprint_core::formatting::utils::string_utils::format_diagnostic(
+      let diagnostic = dprint_core::formatting::utils::string_utils::format_diagnostic(
         Some((err.range().start, err.range().end)),
         &err.kind().to_string(),
         text,
       );
-      Err(FormatError { message, source: err })
+      Err(FormatError { diagnostic, source: err })
     }
   }
 }
