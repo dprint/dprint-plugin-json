@@ -1,23 +1,41 @@
 use std::path::Path;
 
-use anyhow::Result;
-use anyhow::bail;
 use dprint_core::configuration::resolve_new_line_kind;
 use dprint_core::formatting::PrintOptions;
 use jsonc_parser::CollectOptions;
 use jsonc_parser::CommentCollectionStrategy;
 use jsonc_parser::ParseResult;
+use jsonc_parser::errors::ParseError;
 use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
 use super::generation::generate;
 
-pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
+/// Error that occurs while formatting.
+///
+/// The [`Display`](std::fmt::Display) output is a formatted diagnostic, while
+/// the underlying [`ParseError`] can be recovered via [`Error::source`](std::error::Error::source).
+#[derive(Debug, thiserror::Error)]
+#[error("{message}")]
+pub struct FormatError {
+  message: String,
+  #[source]
+  source: ParseError,
+}
+
+impl FormatError {
+  /// The parser error that caused this formatting error.
+  pub fn parse_error(&self) -> &ParseError {
+    &self.source
+  }
+}
+
+pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>, FormatError> {
   let result = format_text_inner(path, text, config)?;
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
-fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String> {
+fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
   let parse_result = parse(text)?;
   let is_jsonc = is_jsonc_file(path, config);
@@ -41,7 +59,7 @@ fn strip_bom(text: &str) -> &str {
   text.strip_prefix("\u{FEFF}").unwrap_or(text)
 }
 
-fn parse(text: &str) -> Result<ParseResult<'_>> {
+fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
   let parse_result = parse_to_ast(
     text,
     &CollectOptions {
@@ -52,11 +70,14 @@ fn parse(text: &str) -> Result<ParseResult<'_>> {
   );
   match parse_result {
     Ok(result) => Ok(result),
-    Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
-      Some((err.range().start, err.range().end)),
-      &err.kind().to_string(),
-      text,
-    )),
+    Err(err) => {
+      let message = dprint_core::formatting::utils::string_utils::format_diagnostic(
+        Some((err.range().start, err.range().end)),
+        &err.kind().to_string(),
+        text,
+      );
+      Err(FormatError { message, source: err })
+    }
   }
 }
 
