@@ -33,7 +33,7 @@ fn test_specs() {
         let config_result = resolve_config(spec_config, &global_config);
         ensure_no_diagnostics(&config_result.diagnostics);
 
-        format_text(&path, &file_text, &config_result.config)
+        format_text(&path, &file_text, &config_result.config).map_err(anyhow::Error::from)
       })
     },
     Arc::new(move |_, _file_text, _spec_config| {
