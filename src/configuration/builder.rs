@@ -98,6 +98,12 @@ impl ConfigurationBuilder {
     self.insert("object.preferSingleLine", value.into())
   }
 
+  /// Whether to add a space surrounding the properties of single line objects.
+  /// Default: `true`
+  pub fn space_surrounding_properties(&mut self, value: bool) -> &mut Self {
+    self.insert("spaceSurroundingProperties", value.into())
+  }
+
   /// Whether to use trailing commas.
   ///
   /// Default: `TrailingCommaKind::Jsonc`
@@ -155,12 +161,13 @@ mod tests {
       .prefer_single_line(true)
       .array_prefer_single_line(true)
       .object_prefer_single_line(false)
+      .space_surrounding_properties(false)
       .trailing_commas(TrailingCommaKind::Always)
       .json_trailing_comma_files(vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()])
       .ignore_node_comment_text("deno-fmt-ignore");
 
     let inner_config = config.get_inner_config();
-    assert_eq!(inner_config.len(), 11);
+    assert_eq!(inner_config.len(), 12);
     let diagnostics = resolve_config(inner_config, &GlobalConfiguration::default()).diagnostics;
     assert_eq!(diagnostics.len(), 0);
   }
