@@ -14,8 +14,6 @@ Then in your project's directory with a dprint.json file, run:
 
 ```shellsession
 dprint add json
-# or install from npm
-dprint add npm:@dprint/json
 ```
 
 See https://dprint.dev/plugins/json/ for more information.
