@@ -345,6 +345,7 @@ fn gen_comma_separated_values<'a>(
           lines_span,
           allow_inline_multi_line,
           allow_inline_single_line,
+          is_known_multi_line: false,
         });
       }
 
@@ -511,6 +512,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
                       lines_span: Some(ir_helpers::LinesSpan { start_line, end_line }),
                       allow_inline_multi_line: false,
                       allow_inline_single_line: false,
+                      is_known_multi_line: false,
                     });
                   }
                 }
