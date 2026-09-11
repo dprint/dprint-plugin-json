@@ -1,0 +1,10 @@
+~~ spaceSurroundingProperties: false, object.preferSingleLine: true, lineWidth: 40 ~~
+== should not add a space surrounding the properties when collapsing to a single line ==
+{
+  "prop": {
+    "test": 2
+  }
+}
+
+[expect]
+{"prop": {"test": 2}}

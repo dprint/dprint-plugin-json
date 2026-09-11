@@ -82,6 +82,18 @@
     "object.preferSingleLine": {
       "$ref": "#/definitions/preferSingleLine"
     },
+    "spaceSurroundingProperties": {
+      "description": "Whether to add a space surrounding the properties of single line objects.",
+      "type": "boolean",
+      "default": true,
+      "oneOf": [{
+        "const": true,
+        "description": "Ex. `{ \"key\": \"value\" }`"
+      }, {
+        "const": false,
+        "description": "Ex. `{\"key\": \"value\"}`"
+      }]
+    },
     "trailingCommas": {
       "description": "Whether to use trailing commas.",
       "type": "string",

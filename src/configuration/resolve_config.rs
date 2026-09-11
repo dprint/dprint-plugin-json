@@ -93,6 +93,7 @@ pub fn resolve_config(
       prefer_single_line,
       &mut diagnostics,
     ),
+    space_surrounding_properties: get_value(&mut config, "spaceSurroundingProperties", true, &mut diagnostics),
     trailing_commas: get_value(
       &mut config,
       "trailingCommas",
