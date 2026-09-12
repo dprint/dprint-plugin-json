@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use dprint_core::configuration::resolve_new_line_kind;
@@ -9,7 +10,6 @@ use jsonc_parser::errors::ParseError;
 use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
-use super::generation::PropertyOrders;
 use super::generation::generate;
 use super::package_json;
 
@@ -44,12 +44,16 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Op
 
 fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
-  let parse_result = parse(text)?;
+  let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
+    package_json::apply_conventions(text)
+  } else {
+    Cow::Borrowed(text)
+  };
+  let parse_result = parse(&text)?;
   let is_jsonc = is_jsonc_file(path, config);
-  let property_orders = resolve_property_orders(path, &parse_result, config);
   Ok(dprint_core::formatting::format(
-    || generate(parse_result, text, config, is_jsonc, property_orders),
-    config_to_print_options(text, config),
+    || generate(parse_result, &text, config, is_jsonc),
+    config_to_print_options(&text, config),
   ))
 }
 
@@ -58,7 +62,7 @@ pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting
   let parse_result = parse(text).unwrap();
 
   dprint_core::formatting::trace_printing(
-    || generate(parse_result, text, config, false, PropertyOrders::new()),
+    || generate(parse_result, text, config, false),
     config_to_print_options(text, config),
   )
 }
@@ -84,7 +88,10 @@ fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
         &err.kind().to_string(),
         text,
       );
-      Err(FormatError { diagnostic, source: err })
+      Err(FormatError {
+        diagnostic,
+        source: err,
+      })
     }
   }
 }
@@ -95,23 +102,6 @@ fn config_to_print_options(text: &str, config: &Configuration) -> PrintOptions {
     max_width: config.line_width,
     use_tabs: config.use_tabs,
     new_line_text: resolve_new_line_kind(text, config.new_line_kind),
-  }
-}
-
-/// Works out how the `package.json` conventions rearrange the file, if they apply to it at all.
-fn resolve_property_orders(path: &Path, parse_result: &ParseResult, config: &Configuration) -> PropertyOrders {
-  if !config.package_json_apply_conventions || !package_json::is_package_json_file(path) {
-    return PropertyOrders::new();
-  }
-  // A comment is attached to the token it was written beside, so moving a property out from under
-  // one would leave the comment behind on whatever took its place. package.json is plain JSON and
-  // has nowhere to put a comment anyway, so the conventions step aside rather than mangle the file.
-  if parse_result.comments.as_ref().is_some_and(|c| !c.is_empty()) {
-    return PropertyOrders::new();
-  }
-  match &parse_result.value {
-    Some(value) => package_json::property_orders(value),
-    None => PropertyOrders::new(),
   }
 }
 

@@ -95,7 +95,7 @@
       }]
     },
     "packageJson.applyConventions": {
-      "description": "Whether to write a package.json file's properties in the conventional order, alphabetizing the dependency sections. Has no effect on a file containing comments.",
+      "description": "Whether to write a package.json file's properties in the conventional order, alphabetizing the dependency sections.",
       "type": "boolean",
       "default": true,
       "oneOf": [{

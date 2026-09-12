@@ -79,7 +79,7 @@
   }
 }
 
-== should give up the blank lines of an object it rearranges ==
+== should drop a blank line that ends up under the open brace ==
 {
   "version": "1.0.0",
 
@@ -186,7 +186,7 @@
   }
 }
 
-== should keep the blank lines of an object it leaves alone while a nested one gives its own up ==
+== should keep a blank line whose property stays where it was ==
 {
   "name": "my-package",
 

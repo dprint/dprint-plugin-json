@@ -1,12 +1,11 @@
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::path::Path;
 
-use jsonc_parser::ast::Object;
-use jsonc_parser::ast::ObjectProp;
-use jsonc_parser::ast::ObjectPropName;
-use jsonc_parser::ast::Value;
-
-use crate::generation::PropertyOrders;
+use jsonc_parser::ParseOptions;
+use jsonc_parser::cst::CstObject;
+use jsonc_parser::cst::CstObjectProp;
+use jsonc_parser::cst::CstRootNode;
 
 pub fn is_package_json_file(path: &Path) -> bool {
   // no need to worry about different casing because npm only ever reads a file named exactly
@@ -14,47 +13,73 @@ pub fn is_package_json_file(path: &Path) -> bool {
   path.file_name().map(|n| n == "package.json").unwrap_or(false)
 }
 
-/// Works out the order the `package.json` conventions put each object's properties in.
+/// Rewrites a `package.json` with its properties in the conventional order.
 ///
 /// The top level is written in the conventional field order, which is the one used by
 /// [`sort-package-json`](https://github.com/keithamus/sort-package-json), and the maps whose keys
 /// are package names or similar are written alphabetically, one level deep. Everything else is
 /// left alone: the order of `exports` conditions and of `files`, `workspaces` or `scripts` entries
 /// is the author's to decide.
-pub fn property_orders(value: &Value) -> PropertyOrders {
-  let mut orders = PropertyOrders::new();
-  let Value::Object(root) = value else {
-    return orders;
+///
+/// The work happens on the CST so that what was written with a property travels with it. Text that
+/// doesn't parse is handed back untouched, since the formatter is about to report that itself.
+pub fn apply_conventions(text: &str) -> Cow<'_, str> {
+  let Ok(root) = CstRootNode::parse(text, &ParseOptions::default()) else {
+    return Cow::Borrowed(text);
+  };
+  let Some(root_object) = root.object_value() else {
+    return Cow::Borrowed(text);
   };
 
-  insert_order(&mut orders, root, compare_top_level_fields);
-  for prop in &root.properties {
-    if ALPHABETICAL_SECTIONS.contains(&prop_name(prop))
-      && let Value::Object(section) = &prop.value
+  sort_properties(&root_object, compare_top_level_fields);
+  for prop in root_object.properties() {
+    if ALPHABETICAL_SECTIONS.contains(&prop.decoded_name().unwrap_or_default().as_str())
+      && let Some(section) = prop.object_value()
     {
-      insert_order(&mut orders, section, |left, right| {
-        compare_names(prop_name(left), prop_name(right))
+      sort_properties(&section, |left, right| {
+        compare_names(&decoded_name(left), &decoded_name(right))
       });
     }
   }
 
-  orders
-}
-
-/// Records the order to write `obj`'s properties in, unless that's the order they're already in.
-fn insert_order(orders: &mut PropertyOrders, obj: &Object, compare: impl Fn(&ObjectProp, &ObjectProp) -> Ordering) {
-  let mut order = (0..obj.properties.len()).collect::<Vec<_>>();
-  // a stable sort leaves two properties sharing a name in the order they were written
-  order.sort_by(|left, right| compare(&obj.properties[*left], &obj.properties[*right]));
-  if order.iter().enumerate().any(|(index, sorted)| index != *sorted) {
-    orders.insert(obj.range.start, order);
+  let sorted = root.to_string();
+  // a file already written in the conventional order comes back exactly as it was, so the
+  // formatter sees the author's own text rather than a copy of it
+  if sorted == text {
+    Cow::Borrowed(text)
+  } else {
+    Cow::Owned(sorted)
   }
 }
 
-fn compare_top_level_fields(left: &ObjectProp, right: &ObjectProp) -> Ordering {
-  let left = prop_name(left);
-  let right = prop_name(right);
-  match (field_index(left), field_index(right)) {
+/// The sections whose properties are written in alphabetical order.
+///
+/// Only maps keyed by a package name or similar appear here, where the order carries no meaning
+/// beyond making an entry easy to find.
+const ALPHABETICAL_SECTIONS: &[&str] = &[
+  "bin",
+  "dependencies",
+  "dependenciesMeta",
+  "devDependencies",
+  "engines",
+  "optionalDependencies",
+  "overrides",
+  "peerDependencies",
+  "peerDependenciesMeta",
+  "resolutions",
+];
+
+fn sort_properties(obj: &CstObject, compare: impl FnMut(&CstObjectProp, &CstObjectProp) -> Ordering) {
+  // The comments above a property travel with it rather than staying put. A conventional order
+  // rearranges the whole file, so a comment left behind would end up over a property it says
+  // nothing about, and a comment written above `dependencies` is almost always about those.
+  obj.sort_properties().by(compare)
+}
+
+fn compare_top_level_fields(left: &CstObjectProp, right: &CstObjectProp) -> Ordering {
+  let left = decoded_name(left);
+  let right = decoded_name(right);
+  match (field_index(&left), field_index(&right)) {
     (Some(left), Some(right)) => left.cmp(&right),
     (Some(_), None) => Ordering::Less,
     (None, Some(_)) => Ordering::Greater,
@@ -63,7 +88,7 @@ fn compare_top_level_fields(left: &ObjectProp, right: &ObjectProp) -> Ordering {
     (None, None) => left
       .starts_with('_')
       .cmp(&right.starts_with('_'))
-      .then_with(|| compare_names(left, right)),
+      .then_with(|| compare_names(&left, &right)),
   }
 }
 
@@ -87,29 +112,10 @@ fn field_index(name: &str) -> Option<usize> {
   FIELD_ORDER.iter().position(|field| *field == name)
 }
 
-fn prop_name<'a>(prop: &'a ObjectProp<'_>) -> &'a str {
-  match &prop.name {
-    ObjectPropName::String(name) => name.value.as_ref(),
-    ObjectPropName::Word(name) => name.value,
-  }
+/// A property whose name can't be decoded sorts as if it had none, which puts it above the rest.
+fn decoded_name(prop: &CstObjectProp) -> String {
+  prop.decoded_name().unwrap_or_default()
 }
-
-/// The sections whose properties are written in alphabetical order.
-///
-/// Only maps keyed by a package name or similar appear here, where the order carries no meaning
-/// beyond making an entry easy to find.
-const ALPHABETICAL_SECTIONS: &[&str] = &[
-  "bin",
-  "dependencies",
-  "dependenciesMeta",
-  "devDependencies",
-  "engines",
-  "optionalDependencies",
-  "overrides",
-  "peerDependencies",
-  "peerDependenciesMeta",
-  "resolutions",
-];
 
 /// The conventional order of the top level fields, as used by `sort-package-json`.
 const FIELD_ORDER: &[&str] = &[
@@ -230,9 +236,6 @@ const FIELD_ORDER: &[&str] = &[
 mod tests {
   use std::path::PathBuf;
 
-  use jsonc_parser::ParseResult;
-  use jsonc_parser::parse_to_ast;
-
   use super::*;
 
   #[test]
@@ -249,24 +252,33 @@ mod tests {
   }
 
   #[test]
-  fn orders_only_the_objects_it_rearranges() {
-    let empty: Vec<Vec<usize>> = Vec::new();
-    // the emptiness is load bearing: an object with no entry keeps its blank lines
+  fn leaves_text_it_does_not_rearrange_exactly_as_it_was() {
+    // the borrow is load bearing: nothing is rewritten unless the conventions actually move something
+    for text in [
+      r#"{ "name": "a", "dependencies": { "a": "1", "b": "2" } }"#,
+      "{}",
+      r#"{ "zzz": 1 }"#,
+      "[3, 1, 2]",
+      "5",
+      "",
+      "{ not json",
+      // a section that isn't an object has no properties to sort
+      r#"{ "name": "a", "dependencies": ["b", "a"] }"#,
+    ] {
+      assert!(matches!(apply_conventions(text), Cow::Borrowed(_)), "rewrote: {}", text);
+    }
+  }
+
+  #[test]
+  fn orders_the_root_and_its_sections() {
     assert_eq!(
-      orders_of(r#"{ "name": "a", "dependencies": { "a": "1", "b": "2" } }"#),
-      empty
+      apply_conventions(r#"{ "version": "1", "name": "a" }"#),
+      r#"{ "name": "a", "version": "1" }"#
     );
-    assert_eq!(orders_of("{}"), empty);
-    assert_eq!(orders_of(r#"{ "zzz": 1 }"#), empty);
-    assert_eq!(orders_of("[3, 1, 2]"), empty);
-    assert_eq!(orders_of(r#"{ "version": "1", "name": "a" }"#), vec![vec![1, 0]]);
-    // the root and the section are ordered separately
     assert_eq!(
-      orders_of(r#"{ "dependencies": { "b": "1", "a": "2" }, "name": "a" }"#),
-      vec![vec![1, 0], vec![1, 0]]
+      apply_conventions(r#"{ "dependencies": { "b": "1", "a": "2" }, "name": "a" }"#),
+      r#"{ "name": "a", "dependencies": { "a": "2", "b": "1" } }"#
     );
-    // a section that isn't an object is left alone
-    assert_eq!(orders_of(r#"{ "name": "a", "dependencies": ["b", "a"] }"#), empty);
   }
 
   #[test]
@@ -294,14 +306,5 @@ mod tests {
     seen.sort_unstable();
     seen.dedup();
     assert_eq!(seen.len(), FIELD_ORDER.len());
-  }
-
-  /// The orders worked out for `text`, sorted so the assertions don't depend on the map's iteration order.
-  fn orders_of(text: &str) -> Vec<Vec<usize>> {
-    let ParseResult { value, .. } = parse_to_ast(text, &Default::default(), &Default::default()).unwrap();
-    let orders = property_orders(&value.unwrap());
-    let mut orders = orders.orders().map(|order| order.to_vec()).collect::<Vec<_>>();
-    orders.sort();
-    orders
   }
 }

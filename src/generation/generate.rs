@@ -1,6 +1,5 @@
 use super::super::configuration::Configuration;
 use super::context::Context;
-use super::property_orders::PropertyOrders;
 use super::token_finder::TokenFinder;
 use dprint_core::formatting::conditions::if_true_or;
 use dprint_core::formatting::ir_helpers::SingleLineOptions;
@@ -21,7 +20,6 @@ pub fn generate(
   text: &str,
   config: &Configuration,
   is_jsonc: bool,
-  property_orders: PropertyOrders,
 ) -> PrintItems {
   let comments = parse_result.comments.unwrap();
   let tokens = parse_result.tokens.unwrap();
@@ -37,7 +35,6 @@ pub fn generate(
     current_node: None,
     comments: &comments,
     token_finder: TokenFinder::new(&tokens),
-    property_orders: &property_orders,
   };
 
   let mut items = PrintItems::new();
@@ -169,28 +166,16 @@ fn gen_object<'a>(obj: &'a Object, context: &mut Context<'a, '_>) -> PrintItems 
           .first()
           .map(|p| context.text_info.line_index(p.start()))
           .unwrap_or_else(|| context.text_info.line_index(obj.end())));
-  // the order the conventions rearrange this object's properties into, if they apply to it
-  let order = context.property_orders.get(obj.start());
-  let nodes = match order {
-    Some(order) => order
-      .iter()
-      .map(|index| Some(Node::ObjectProp(&obj.properties[*index])))
-      .collect(),
-    None => obj.properties.iter().map(|p| Some(Node::ObjectProp(p))).collect(),
-  };
-  // a blank line divides the properties as they were written and says nothing about where
-  // reordering puts them, so a rearranged object gives its blank lines up
-  let allow_blank_lines = order.is_none();
 
   gen_surrounded_by_tokens(
     |context| {
       let mut items = PrintItems::new();
       items.extend(gen_comma_separated_values(
         GenCommaSeparatedValuesOptions {
-          nodes,
+          nodes: obj.properties.iter().map(|x| Some(Node::ObjectProp(x))).collect(),
           prefer_hanging: false,
           force_use_new_lines: force_multi_lines,
-          allow_blank_lines,
+          allow_blank_lines: true,
           single_line_space_at_start: context.config.space_surrounding_properties,
           single_line_space_at_end: context.config.space_surrounding_properties,
           custom_single_line_separator: None,
@@ -313,13 +298,6 @@ fn gen_comma_separated_values<'a>(
   context: &mut Context<'a, '_>,
 ) -> PrintItems {
   let nodes = opts.nodes;
-  // `maintain` asks whether the source had a trailing comma, so it looks at the node the source
-  // ended with. That is the last node written unless the values have been reordered since.
-  let source_last_range = nodes
-    .iter()
-    .flatten()
-    .map(|node| node.range())
-    .max_by_key(|range| range.start);
   let indent_width = context.config.indent_width;
   let compute_lines_span = opts.allow_blank_lines && opts.force_use_new_lines; // save time otherwise
   ir_helpers::gen_separated_values(
@@ -345,8 +323,8 @@ fn gen_comma_separated_values<'a>(
           let use_comma_for_last = !is_final_node
             || match context.config.trailing_commas {
               TrailingCommaKind::Always => true,
-              TrailingCommaKind::Maintain => match source_last_range {
-                Some(range) => context.token_finder.get_next_token_if_comma(&range).is_some(),
+              TrailingCommaKind::Maintain => match &value {
+                Some(value) => context.token_finder.get_next_token_if_comma(&value.range()).is_some(),
                 None => false,
               },
               TrailingCommaKind::Jsonc => context.is_jsonc,
@@ -426,12 +404,6 @@ fn gen_comma_separated_value<'a>(
   return items;
 
   fn get_comma_token<'a, 'b>(element: &Option<Node>, context: &mut Context<'a, 'b>) -> Option<&'b TokenAndRange<'a>> {
-    // The comma is only wanted for the comments around it, and the token finder seeks to it one
-    // token at a time -- which is a walk of the whole file per value when the values are written
-    // out of source order. Nothing to find means nothing to walk for.
-    if context.comments.is_empty() {
-      return None;
-    }
     if let Some(element) = element {
       context.token_finder.get_next_token_if_comma(element)
     } else {
