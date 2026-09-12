@@ -94,6 +94,7 @@ pub fn resolve_config(
       &mut diagnostics,
     ),
     space_surrounding_properties: get_value(&mut config, "spaceSurroundingProperties", true, &mut diagnostics),
+    package_json_apply_conventions: get_value(&mut config, "packageJson.applyConventions", true, &mut diagnostics),
     trailing_commas: get_value(
       &mut config,
       "trailingCommas",

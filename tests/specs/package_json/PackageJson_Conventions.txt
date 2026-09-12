@@ -1,0 +1,208 @@
+-- /package.json --
+== should write the top level fields in the conventional order ==
+{
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc"
+  },
+  "version": "1.0.0",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "chalk": "^5.0.0"
+  },
+  "name": "my-package",
+  "license": "MIT"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
+
+== should sort unknown fields after the known ones and underscore fields last ==
+{
+  "_id": "my-package@1.0.0",
+  "zzz": true,
+  "dependencies": {},
+  "_from": "my-package",
+  "aaa": true,
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {},
+  "aaa": true,
+  "zzz": true,
+  "_from": "my-package",
+  "_id": "my-package@1.0.0"
+}
+
+== should leave a file that's already in the conventional order alone ==
+{
+  "name": "my-package",
+  "version": "1.0.0",
+
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "zod": "^3.0.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0",
+
+  "dependencies": {
+    "chalk": "^5.0.0",
+    "zod": "^3.0.0"
+  }
+}
+
+== should give up the blank lines of an object it rearranges ==
+{
+  "version": "1.0.0",
+
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0"
+}
+
+== should leave the order of exports conditions, files and scripts alone ==
+{
+  "exports": {
+    "types": "./index.d.ts",
+    "default": "./index.js"
+  },
+  "files": ["dist", "bin"],
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc"
+  }
+}
+
+[expect]
+{
+  "exports": {
+    "types": "./index.d.ts",
+    "default": "./index.js"
+  },
+  "files": ["dist", "bin"],
+  "scripts": {
+    "test": "node --test",
+    "build": "tsc"
+  }
+}
+
+== should rearrange a single line file without breaking it up ==
+{ "version": "1.0.0", "dependencies": { "zod": "^3.0.0", "chalk": "^5.0.0" }, "name": "my-package" }
+
+[expect]
+{ "name": "my-package", "version": "1.0.0", "dependencies": { "chalk": "^5.0.0", "zod": "^3.0.0" } }
+
+== should place a section by convention and sort its contents ==
+{
+  "overrides": { "b": "1", "a": "1" },
+  "resolutions": { "b": "1", "a": "1" },
+  "engines": { "npm": "1", "node": "1" },
+  "bin": { "b": "./b.js", "a": "./a.js" },
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "bin": { "a": "./a.js", "b": "./b.js" },
+  "resolutions": { "a": "1", "b": "1" },
+  "overrides": { "a": "1", "b": "1" },
+  "engines": { "node": "1", "npm": "1" }
+}
+
+== should sort a section one level deep only ==
+{
+  "overrides": {
+    "zod": { "typescript": "5", "chalk": "5" },
+    "aaa": "1"
+  }
+}
+
+[expect]
+{
+  "overrides": {
+    "aaa": "1",
+    "zod": { "typescript": "5", "chalk": "5" }
+  }
+}
+
+== should sort names the way npm does, ignoring case until it has nothing else to go on ==
+{
+  "dependencies": {
+    "zod": "1",
+    "js-yaml": "1",
+    "JSONStream": "1",
+    "jest": "1",
+    "@scope/b": "1",
+    "@scope/a": "1",
+    "abc": "1",
+    "Abc": "1"
+  }
+}
+
+[expect]
+{
+  "dependencies": {
+    "@scope/a": "1",
+    "@scope/b": "1",
+    "abc": "1",
+    "Abc": "1",
+    "jest": "1",
+    "js-yaml": "1",
+    "JSONStream": "1",
+    "zod": "1"
+  }
+}
+
+== should keep the blank lines of an object it leaves alone while a nested one gives its own up ==
+{
+  "name": "my-package",
+
+  "dependencies": {
+    "zod": "1",
+
+    "chalk": "1"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+
+  "dependencies": {
+    "chalk": "1",
+    "zod": "1"
+  }
+}

@@ -1,4 +1,5 @@
 use super::super::configuration::Configuration;
+use super::property_orders::PropertyOrders;
 use super::token_finder::TokenFinder;
 use jsonc_parser::CommentMap;
 use jsonc_parser::ast::*;
@@ -16,6 +17,7 @@ pub struct Context<'a, 'b> {
   pub current_node: Option<Node<'a, 'a>>,
   pub comments: &'b CommentMap<'a>,
   pub token_finder: TokenFinder<'a>,
+  pub property_orders: &'b PropertyOrders,
 }
 
 impl<'a, 'b> Context<'a, 'b> {

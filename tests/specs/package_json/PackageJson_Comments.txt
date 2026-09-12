@@ -1,0 +1,76 @@
+-- /package.json --
+== should leave a file with comments alone rather than strand them ==
+{
+  // the name
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  // the name
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+== should leave a file with a block comment alone ==
+{
+  /* the version */
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  /* the version */
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+== should leave a file with a comment after the last property alone ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+  // trailing
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  "name": "my-package"
+  // trailing
+}
+
+== should step aside for the whole file when only a nested section has a comment ==
+{
+  "name": "my-package",
+  "dependencies": {
+    // pinned
+    "zod": "^3",
+    "chalk": "^5"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {
+    // pinned
+    "zod": "^3",
+    "chalk": "^5"
+  }
+}
+
+== should not fight with a dprint-ignore comment ==
+{
+  "version": "1.0.0",
+  // dprint-ignore
+  "name": [   1 ]
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  // dprint-ignore
+  "name": [   1 ]
+}

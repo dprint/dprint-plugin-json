@@ -1,0 +1,21 @@
+-- /package.json --
+~~ packageJson.applyConventions: false ~~
+== should leave the file alone ==
+{
+  "version": "1.0.0",
+  "name": "my-package",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "chalk": "^5.0.0"
+  }
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  "name": "my-package",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "chalk": "^5.0.0"
+  }
+}

@@ -1,0 +1,13 @@
+-- /package.json --
+~~ trailingCommas: never ~~
+== should reorder and drop the trailing comma ==
+{
+  "version": "1.0.0",
+  "name": "my-package",
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0"
+}

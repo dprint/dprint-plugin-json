@@ -1,0 +1,10 @@
+-- /package.json --
+~~ object.preferSingleLine: true ~~
+== should reorder and collapse in a single pass ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{ "name": "my-package", "version": "1.0.0" }
