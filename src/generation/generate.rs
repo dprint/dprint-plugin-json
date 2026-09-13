@@ -9,7 +9,9 @@ use jsonc_parser::ast::*;
 use jsonc_parser::common::Range;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::TokenAndRange;
+use std::borrow::Cow;
 use std::collections::HashSet;
+use std::fmt::Write;
 use std::rc::Rc;
 use text_lines::TextLines;
 
@@ -275,10 +277,10 @@ fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> Pri
   let text = &text[1..text.len() - 1];
   items.push_sc(DOUBLE_QUOTE_SC);
   if is_double_quotes {
-    items.push_string(text.to_string());
+    items.push_string(escape_control_chars(text).into_owned());
   } else {
-    let text = text.replace("\\'", "'");
-    items.push_string(text.replace('"', "\\\""));
+    let text = text.replace("\\'", "'").replace('"', "\\\"");
+    items.push_string(escape_control_chars(&text).into_owned());
   }
   items.push_sc(DOUBLE_QUOTE_SC);
   items
@@ -815,4 +817,26 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
   // any false positives (unless someone is being silly).
   context.text_info.line_index(range.start) == context.text_info.line_index(range.end)
     && range.width() > (context.config.line_width * 2) as usize
+}
+
+/// Escapes control characters (U+0000 through U+001F), which JSON doesn't allow
+/// unescaped in strings. The parser accepts them and the printer can't handle raw newlines.
+fn escape_control_chars(text: &str) -> Cow<'_, str> {
+  if !text.chars().any(|c| c < '\u{20}') {
+    return Cow::Borrowed(text);
+  }
+
+  let mut result = String::with_capacity(text.len() + 8);
+  for c in text.chars() {
+    match c {
+      '\n' => result.push_str("\\n"),
+      '\r' => result.push_str("\\r"),
+      '\t' => result.push_str("\\t"),
+      '\u{08}' => result.push_str("\\b"),
+      '\u{0C}' => result.push_str("\\f"),
+      '\u{00}'..='\u{1F}' => write!(result, "\\u{:04x}", c as u32).unwrap(),
+      _ => result.push(c),
+    }
+  }
+  Cow::Owned(result)
 }

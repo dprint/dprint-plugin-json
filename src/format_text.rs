@@ -281,6 +281,22 @@ mod tests {
     }
   }
 
+  #[test]
+  fn escapes_raw_control_chars_in_strings() {
+    // json doesn't allow these unescaped in strings (https://github.com/dprint/dprint-plugin-json/issues/63)
+    let config = ConfigurationBuilder::new().build();
+    assert_eq!(format(&config, "\"a\nb\""), "\"a\\nb\"\n");
+    assert_eq!(format(&config, "\"a\r\nb\""), "\"a\\r\\nb\"\n");
+    assert_eq!(format(&config, "\"a\tb\u{08}\u{0C}\""), "\"a\\tb\\b\\f\"\n");
+    assert_eq!(
+      format(&config, "\"a\u{00}\u{1B}\u{1F}\""),
+      "\"a\\u0000\\u001b\\u001f\"\n"
+    );
+    assert_eq!(format(&config, "'a\"\n\\'b'"), "\"a\\\"\\n'b\"\n");
+    // escape sequences and non-control characters are left alone
+    assert_eq!(format(&config, "\"a\\n\\\\\u{7F}\""), "\"a\\n\\\\\u{7F}\"\n");
+  }
+
   fn format(config: &Configuration, text: &str) -> String {
     let output = format_text(Path::new("/file.json"), text, config)
       .unwrap()
