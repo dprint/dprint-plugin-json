@@ -1,28 +1,60 @@
+use std::borrow::Cow;
 use std::path::Path;
 
-use anyhow::Result;
-use anyhow::bail;
-
 use super::configuration::Configuration;
+use super::package_json;
+use crate::streaming::StreamError;
 use crate::streaming::format_streaming;
 
-pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>> {
+/// Error that occurs while formatting.
+///
+/// The [`Display`](std::fmt::Display) output is a formatted diagnostic, while
+/// the underlying [`StreamError`] can be recovered via [`Error::source`](std::error::Error::source).
+#[derive(Debug, thiserror::Error)]
+#[error("{diagnostic}")]
+pub struct FormatError {
+  diagnostic: String,
+  #[source]
+  source: StreamError,
+}
+
+impl FormatError {
+  /// The error message without position or source highlight (ex. `Unexpected token`).
+  pub fn message(&self) -> String {
+    self.source.message.to_string()
+  }
+
+  /// The syntax error that caused this formatting error.
+  pub fn stream_error(&self) -> &StreamError {
+    &self.source
+  }
+}
+
+pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>, FormatError> {
   let result = format_text_inner(path, text, config)?;
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
-fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String> {
+fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
+  let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
+    package_json::apply_conventions(text, config)
+  } else {
+    Cow::Borrowed(text)
+  };
   let is_jsonc = is_jsonc_file(path, config);
   match format_streaming(text.as_bytes(), config, is_jsonc) {
     // Input is valid UTF-8 (`&str`) and the formatter only rearranges/copies its
     // bytes, so the output is always valid UTF-8.
     Ok(bytes) => Ok(String::from_utf8(bytes).expect("formatted output is valid UTF-8")),
-    Err(err) => bail!(dprint_core::formatting::utils::string_utils::format_diagnostic(
-      Some((err.start, err.end)),
-      err.message,
-      text,
-    )),
+    Err(err) => {
+      let diagnostic =
+        dprint_core::formatting::utils::string_utils::format_diagnostic(Some((err.start, err.end)), err.message, &text);
+      Err(FormatError {
+        diagnostic,
+        source: err,
+      })
+    }
   }
 }
 
@@ -87,6 +119,7 @@ mod tests {
   use std::path::PathBuf;
 
   use crate::configuration::ConfigurationBuilder;
+  use crate::configuration::TrailingCommaKind;
 
   use super::super::configuration::resolve_config;
   use super::*;
@@ -145,6 +178,35 @@ mod tests {
     if cfg!(windows) {
       assert!(is_jsonc_file(&PathBuf::from("test\\.vscode\\settings.json"), &config));
     }
+  }
+
+  #[test]
+  fn package_json_listed_as_a_trailing_comma_file() {
+    // opting package.json into jsonc is the caller's business; the conventions still apply, and
+    // the two compose into a reordered file with the trailing comma that was asked for
+    let config = ConfigurationBuilder::new()
+      .json_trailing_comma_files(vec!["package.json".to_string()])
+      .trailing_commas(TrailingCommaKind::Jsonc)
+      .build();
+    let text = "{\n  \"version\": \"1.0.0\",\n  \"name\": \"a\"\n}\n";
+    let output = format_text(Path::new("/package.json"), text, &config).unwrap().unwrap();
+    assert_eq!(output, "{\n  \"name\": \"a\",\n  \"version\": \"1.0.0\",\n}\n");
+  }
+
+  #[test]
+  fn package_json_that_fails_to_parse_reports_the_usual_diagnostic() {
+    // text that doesn't parse is handed straight back by the conventions, so the positions in the
+    // message are the ones the author wrote
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
+    let message = format_text(Path::new("/package.json"), "{ &*&* }", &config)
+      .err()
+      .unwrap()
+      .to_string();
+    assert_eq!(
+      message,
+      concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~")
+    );
   }
 
   #[test]

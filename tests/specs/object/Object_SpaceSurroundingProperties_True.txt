@@ -1,0 +1,12 @@
+~~ spaceSurroundingProperties: true ~~
+== should add a space surrounding the properties of single line objects ==
+{"prop": 5, "prop2": {"prop3": "test"}}
+
+[expect]
+{ "prop": 5, "prop2": { "prop3": "test" } }
+
+== should handle block comments adjacent to the braces ==
+{/* a */ "prop": 5 /* b */}
+
+[expect]
+{ /* a */ "prop": 5 /* b */ }

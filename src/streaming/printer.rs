@@ -44,6 +44,7 @@ struct Printer<'a> {
   trailing_commas: TrailingCommaKind,
   array_prefer_single_line: bool,
   object_prefer_single_line: bool,
+  space_surrounding_properties: bool,
   newline: &'static [u8],
 }
 
@@ -205,8 +206,17 @@ impl<'a> Printer<'a> {
     // Walk tokens emitting commas positionally so a leading comment after a
     // comma (`[], /* c */ key`) keeps its place. `prev` tracks the previous
     // emitted token kind to pick the separator. Objects pad with `{ ` / ` }`
-    // only when they hold a member; comment-only objects render `{/*a*/}`.
+    // only when they hold a member and `spaceSurroundingProperties` is on;
+    // comment-only objects render `{/*a*/}`.
     buf.push(if is_array { b'[' } else { b'{' });
+    let mut first = i + 1;
+    while is_comment(self.toks[first].kind) {
+      first += 1;
+    }
+    let pad = !is_array && self.space_surrounding_properties && !is_close(self.toks[first].kind);
+    if pad {
+      buf.push(b' ');
+    }
     let mut idx = i + 1;
     let mut prev = Prev::Open;
     loop {
@@ -238,11 +248,7 @@ impl<'a> Printer<'a> {
       }
       // member
       match prev {
-        Prev::Open => {
-          if !is_array {
-            buf.push(b' ');
-          }
-        }
+        Prev::Open => {}
         Prev::Comma | Prev::Comment => buf.push(b' '),
         Prev::Value => buf.extend_from_slice(b", "), // consecutive values (no source comma)
       }
@@ -255,7 +261,7 @@ impl<'a> Printer<'a> {
       }
       prev = Prev::Value;
     }
-    if !is_array && prev == Prev::Value {
+    if pad {
       buf.push(b' ');
     }
     buf.push(if is_array { b']' } else { b'}' });
@@ -860,6 +866,7 @@ pub(super) fn format(src: &[u8], toks: &[Token], config: &Configuration, is_json
     trailing_commas: config.trailing_commas,
     array_prefer_single_line: config.array_prefer_single_line,
     object_prefer_single_line: config.object_prefer_single_line,
+    space_surrounding_properties: config.space_surrounding_properties,
     newline: resolve_newline(src, config.new_line_kind),
   };
   p.emit_root();

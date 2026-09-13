@@ -1,0 +1,78 @@
+-- /package.json --
+== should leave an empty object alone ==
+{}
+
+[expect]
+{}
+
+== should leave a root that isn't an object alone ==
+[3, 1, 2]
+
+[expect]
+[3, 1, 2]
+
+== should leave a root scalar alone ==
+5
+
+[expect]
+5
+
+== should leave a single property alone ==
+{
+  "zzz": 1
+}
+
+[expect]
+{
+  "zzz": 1
+}
+
+== should not sort a section that isn't an object ==
+{
+  "version": "1.0.0",
+  "dependencies": ["b", "a"]
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  "dependencies": ["b", "a"]
+}
+
+== should not sort a null section ==
+{
+  "version": "1.0.0",
+  "dependencies": null
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  "dependencies": null
+}
+
+== should reorder the root around an empty section ==
+{
+  "dependencies": {},
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {}
+}
+
+== should keep duplicate names in the order they were written ==
+{
+  "version": "1.0.0",
+  "name": "a",
+  "name": "b"
+}
+
+[expect]
+{
+  "name": "a",
+  "name": "b",
+  "version": "1.0.0"
+}

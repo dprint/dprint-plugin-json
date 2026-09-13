@@ -1,0 +1,12 @@
+-- /other.json --
+== should not apply the conventions to a file that isn't package.json ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  "version": "1.0.0",
+  "name": "my-package"
+}

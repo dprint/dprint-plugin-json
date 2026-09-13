@@ -17,6 +17,9 @@ pub struct Configuration {
   pub array_prefer_single_line: bool,
   #[serde(rename = "object.preferSingleLine")]
   pub object_prefer_single_line: bool,
+  pub space_surrounding_properties: bool,
+  #[serde(rename = "packageJson.applyConventions")]
+  pub package_json_apply_conventions: bool,
   pub trailing_commas: TrailingCommaKind,
   pub json_trailing_comma_files: Vec<String>,
 }

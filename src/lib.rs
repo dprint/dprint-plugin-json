@@ -4,6 +4,7 @@ mod format_text;
 // is the streaming one.
 #[cfg(feature = "tracing")]
 mod generation;
+mod package_json;
 pub mod streaming;
 
 pub use format_text::format_text;

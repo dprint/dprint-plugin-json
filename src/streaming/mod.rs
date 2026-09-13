@@ -37,7 +37,8 @@ pub(crate) struct Token {
 
 /// A syntax error found by the streaming formatter (it validates as it goes
 /// instead of delegating to a parser). `start`/`end` are byte offsets.
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
+#[error("{message}")]
 pub struct StreamError {
   pub start: usize,
   pub end: usize,
