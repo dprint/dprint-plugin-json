@@ -1,5 +1,6 @@
 use super::Configuration;
 use super::builder::ConfigurationBuilder;
+use super::types::EofNewLineKind;
 use super::types::TrailingCommaKind;
 use dprint_core::configuration::*;
 
@@ -69,6 +70,7 @@ pub fn resolve_config(
         .unwrap_or(RECOMMENDED_GLOBAL_CONFIGURATION.new_line_kind),
       &mut diagnostics,
     ),
+    eof_new_line: get_value(&mut config, "eofNewLine", EofNewLineKind::Always, &mut diagnostics),
     comment_line_force_space_after_slashes: get_value(
       &mut config,
       "commentLine.forceSpaceAfterSlashes",

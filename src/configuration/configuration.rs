@@ -1,6 +1,7 @@
 use dprint_core::configuration::NewLineKind;
 use serde::{Deserialize, Serialize};
 
+use super::types::EofNewLineKind;
 use super::types::TrailingCommaKind;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,6 +11,7 @@ pub struct Configuration {
   pub use_tabs: bool,
   pub indent_width: u8,
   pub new_line_kind: NewLineKind,
+  pub eof_new_line: EofNewLineKind,
   #[serde(rename = "commentLine.forceSpaceAfterSlashes")]
   pub comment_line_force_space_after_slashes: bool,
   pub ignore_node_comment_text: String,

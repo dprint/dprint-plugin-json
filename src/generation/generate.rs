@@ -44,13 +44,25 @@ pub fn generate(
   } else if let Some(comments) = comments.get(&0) {
     items.extend(gen_comments_as_statements(comments.iter(), None, &mut context));
   }
-  items.push_condition(conditions::if_true(
-    "endOfFileNewLine",
-    Rc::new(|context| Some(context.writer_info.column_number > 0 || context.writer_info.line_number > 0)),
-    Signal::NewLine.into(),
-  ));
+  if should_end_with_new_line(text, config) {
+    items.push_condition(conditions::if_true(
+      "endOfFileNewLine",
+      Rc::new(|context| Some(context.writer_info.column_number > 0 || context.writer_info.line_number > 0)),
+      Signal::NewLine.into(),
+    ));
+  }
 
   items
+}
+
+fn should_end_with_new_line(text: &str, config: &Configuration) -> bool {
+  match config.eof_new_line {
+    EofNewLineKind::Always => true,
+    EofNewLineKind::Never => false,
+    // look for a newline anywhere in the trailing whitespace so that ex. a space after it doesn't count
+    // against it, and include `\r` for files that use it on its own as the newline
+    EofNewLineKind::Maintain => text[text.trim_end().len()..].contains(['\n', '\r']),
+  }
 }
 
 fn gen_node<'a>(node: Node<'a, 'a>, context: &mut Context<'a, '_>) -> PrintItems {

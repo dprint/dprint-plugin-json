@@ -61,6 +61,21 @@
         "description": "Uses the system standard (ex. crlf on Windows)."
       }]
     },
+    "eofNewLine": {
+      "description": "Whether to end the file with a newline.",
+      "type": "string",
+      "default": "always",
+      "oneOf": [{
+        "const": "always",
+        "description": "Always end the file with a newline."
+      }, {
+        "const": "maintain",
+        "description": "End the file with a newline only when it already ends with one."
+      }, {
+        "const": "never",
+        "description": "Never end the file with a newline."
+      }]
+    },
     "commentLine.forceSpaceAfterSlashes": {
       "description": "Forces a space after slashes.  For example: `// comment` instead of `//comment`",
       "type": "boolean",
