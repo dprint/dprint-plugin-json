@@ -278,3 +278,22 @@
     "npm": ">=9"
   }
 }
+
+== should sort a section opened on the brace line as a whole, since its blank lines do not survive ==
+{
+  "dependencies": { "zz": "1",
+
+    // heading
+    "bb": "2",
+    "aa": "3" }
+}
+
+[expect]
+{
+  "dependencies": {
+    "aa": "3",
+    // heading
+    "bb": "2",
+    "zz": "1"
+  }
+}

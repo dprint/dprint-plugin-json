@@ -47,7 +47,7 @@ fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<
   // a package.json is parsed twice, once as a CST to reorder and once as the AST the printer
   // wants, which costs little for a file that size
   let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
-    package_json::apply_conventions(text)
+    package_json::apply_conventions(text, config)
   } else {
     Cow::Borrowed(text)
   };

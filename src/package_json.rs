@@ -9,6 +9,8 @@ use jsonc_parser::cst::CstObject;
 use jsonc_parser::cst::CstObjectProp;
 use jsonc_parser::cst::CstRootNode;
 
+use crate::configuration::Configuration;
+
 pub fn is_package_json_file(path: &Path) -> bool {
   // no need to worry about different casing because npm only ever reads a file named exactly
   // package.json (https://docs.npmjs.com/cli/configuring-npm/package-json)
@@ -27,7 +29,7 @@ pub fn is_package_json_file(path: &Path) -> bool {
 ///
 /// The work happens on the CST so that what was written with a property travels with it. Text that
 /// doesn't parse is handed back untouched, since the formatter is about to report that itself.
-pub fn apply_conventions(text: &str) -> Cow<'_, str> {
+pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, str> {
   let Ok(root) = CstRootNode::parse(text, &ParseOptions::default()) else {
     return Cow::Borrowed(text);
   };
@@ -48,8 +50,8 @@ pub fn apply_conventions(text: &str) -> Cow<'_, str> {
     };
     match section {
       Section::Plain => object.sort_properties().by(compare_properties),
-      Section::Dependencies => sort_dependencies(&object),
-      Section::Overrides if !names_a_package_twice(&object) => sort_dependencies(&object),
+      Section::Dependencies => sort_dependencies(&object, config),
+      Section::Overrides if !names_a_package_twice(&object) => sort_dependencies(&object, config),
       Section::Overrides => {}
     }
   }
@@ -67,16 +69,24 @@ pub fn apply_conventions(text: &str) -> Cow<'_, str> {
 ///
 /// A long list of dependencies is often written as runs with a comment heading each, and a
 /// dependency belongs to its run rather than to the section as a whole, so no dependency is sorted
-/// out of the run it was written in and each heading stays over its run.
+/// out of the run it was written in and each heading stays over its run. Only a comment set off by
+/// a blank line starts a run; a blank line with nothing under it is just spacing.
 ///
-/// Only a comment set off by a blank line starts a run. A blank line with nothing under it is just
-/// spacing, and one the printer is free to remove: a section divided on it would come out unsorted
-/// the first time it was formatted and sorted the second. A heading keeps its line, and the blank
-/// line above it, however the section is printed.
+/// A run is only kept where the printer keeps the blank line that starts it, which it does for a
+/// section written with its first dependency on a line of its own and not under
+/// `object.preferSingleLine`. Anywhere else that blank line is gone once the file is formatted, so
+/// the heading under it would no longer start a run the next time and the section would sort
+/// differently. There the section is sorted as a whole, with each comment travelling with the
+/// dependency beneath it.
 ///
 /// The runs survive formatting but not `npm install`, which rewrites the dependency sections sorted
 /// as a whole.
-fn sort_dependencies(section: &CstObject) {
+fn sort_dependencies(section: &CstObject, config: &Configuration) {
+  if config.object_prefer_single_line || !opens_on_its_own_line(section) {
+    section.sort_properties().by(compare_properties);
+    return;
+  }
+
   let mut run = 0;
   let runs = section
     .properties()
@@ -94,6 +104,16 @@ fn sort_dependencies(section: &CstObject) {
       .cmp(&runs.get(&right.child_index()))
       .then_with(|| compare_properties(left, right))
   });
+}
+
+/// Whether the section's first property is written on a line after its open brace, which is what
+/// has the printer keep the section's blank lines rather than fold them away.
+fn opens_on_its_own_line(section: &CstObject) -> bool {
+  section
+    .children()
+    .iter()
+    .take_while(|node| node.as_object_prop().is_none())
+    .any(|node| node.is_newline())
 }
 
 /// Whether a comment set off by a blank line sits directly above the property on a line of its own,
@@ -341,6 +361,8 @@ const FIELD_ORDER: &[&str] = &[
 mod tests {
   use std::path::PathBuf;
 
+  use crate::configuration::ConfigurationBuilder;
+
   use super::*;
 
   #[test]
@@ -370,18 +392,18 @@ mod tests {
       // a section that isn't an object has no properties to sort
       r#"{ "name": "a", "dependencies": ["b", "a"] }"#,
     ] {
-      assert!(matches!(apply_conventions(text), Cow::Borrowed(_)), "rewrote: {}", text);
+      assert!(matches!(conventions(text), Cow::Borrowed(_)), "rewrote: {}", text);
     }
   }
 
   #[test]
   fn orders_the_root_and_its_sections() {
     assert_eq!(
-      apply_conventions(r#"{ "version": "1", "name": "a" }"#),
+      conventions(r#"{ "version": "1", "name": "a" }"#),
       r#"{ "name": "a", "version": "1" }"#
     );
     assert_eq!(
-      apply_conventions(r#"{ "dependencies": { "b": "1", "a": "2" }, "name": "a" }"#),
+      conventions(r#"{ "dependencies": { "b": "1", "a": "2" }, "name": "a" }"#),
       r#"{ "name": "a", "dependencies": { "a": "2", "b": "1" } }"#
     );
   }
@@ -390,17 +412,17 @@ mod tests {
   fn leaves_resolutions_in_the_order_they_were_written() {
     // yarn takes the first pattern that matches, so the specific one only wins from above
     let text = r#"{ "resolutions": { "react-scripts/**/lodash": "4.17.21", "**/lodash": "4.17.15" } }"#;
-    assert!(matches!(apply_conventions(text), Cow::Borrowed(_)));
+    assert!(matches!(conventions(text), Cow::Borrowed(_)));
   }
 
   #[test]
   fn leaves_overrides_alone_when_two_keys_name_one_package() {
     // npm takes the first key whose version matches, so this order decides what gets installed
     let text = r#"{ "overrides": { "foo@2": "2.9.9", "foo@1 || 2": "1.0.0" } }"#;
-    assert!(matches!(apply_conventions(text), Cow::Borrowed(_)));
+    assert!(matches!(conventions(text), Cow::Borrowed(_)));
     // with nothing to choose between, the keys are just a map
     assert_eq!(
-      apply_conventions(r#"{ "overrides": { "foo": "2", "bar": "1" } }"#),
+      conventions(r#"{ "overrides": { "foo": "2", "bar": "1" } }"#),
       r#"{ "overrides": { "bar": "1", "foo": "2" } }"#
     );
   }
@@ -464,5 +486,9 @@ mod tests {
     seen.sort_unstable();
     seen.dedup();
     assert_eq!(seen.len(), FIELD_ORDER.len());
+  }
+
+  fn conventions(text: &str) -> Cow<'_, str> {
+    apply_conventions(text, &ConfigurationBuilder::new().build())
   }
 }
