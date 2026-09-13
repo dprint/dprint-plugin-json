@@ -123,7 +123,9 @@ impl ConfigurationBuilder {
 
   /// When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas.
   ///
-  /// Ex. `vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()]`
+  /// Supports globs (`*`, `?`, `**`, `[...]`, and `{a,b}`) matched against the end of the file path.
+  ///
+  /// Ex. `vec!["{j,t}sconfig*.json".to_string(), ".vscode/*.json".to_string()]`
   pub fn json_trailing_comma_files(&mut self, value: Vec<String>) -> &mut Self {
     self.insert(
       "jsonTrailingCommaFiles",

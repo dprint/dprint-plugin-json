@@ -125,7 +125,7 @@
       }]
     },
     "jsonTrailingCommaFiles": {
-      "description": "When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas (ex. `[\"tsconfig.json\", \".vscode/settings.json\"]`).",
+      "description": "When `trailingCommas` is `jsonc`, treat these files as JSONC and use trailing commas. Supports globs (`*`, `?`, `**`, `[...]`, and `{a,b}`) matched against the end of the file path (ex. `[\"{j,t}sconfig*.json\", \".vscode/*.json\"]`).",
       "type": "array",
       "items": {
         "type": "string"
