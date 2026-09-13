@@ -1,6 +1,7 @@
 use super::Configuration;
 use super::builder::ConfigurationBuilder;
 use super::types::TrailingCommaKind;
+use crate::glob;
 use dprint_core::configuration::*;
 
 /// Resolves configuration from a collection of key value strings.
@@ -128,28 +129,15 @@ fn get_trailing_comma_files(
   let mut entries = Vec::with_capacity(0);
   if let Some(values) = config.shift_remove(key) {
     if let ConfigKeyValue::Array(values) = values {
-      entries = Vec::with_capacity(values.len() * 2);
+      entries = Vec::with_capacity(values.len());
       for (i, value) in values.into_iter().enumerate() {
         if let ConfigKeyValue::String(value) = value {
-          if value.starts_with("./") {
-            diagnostics.push(ConfigurationDiagnostic {
+          match resolve_trailing_comma_file_patterns(&value) {
+            Ok(patterns) => entries.extend(patterns),
+            Err(message) => diagnostics.push(ConfigurationDiagnostic {
               property_name: key.to_string(),
-              message: format!(
-                "Element at index {} starting with dot slash (./) is not supported. Remove the leading dot slash.",
-                i
-              ),
-            });
-          } else if value.chars().any(|c| matches!(c, '\\' | '/')) {
-            let value = if value.starts_with('/') || value.starts_with('\\') {
-              value
-            } else {
-              format!("/{}", value)
-            };
-            entries.push(value.replace('/', "\\"));
-            entries.push(value.replace('\\', "/"));
-          } else {
-            entries.push(format!("/{}", value));
-            entries.push(format!("\\{}", value));
+              message: format!("Element at index {} {}", i, message),
+            }),
           }
         } else {
           diagnostics.push(ConfigurationDiagnostic {
@@ -166,6 +154,34 @@ fn get_trailing_comma_files(
     }
   }
   entries
+}
+
+/// Expands and normalizes a `jsonTrailingCommaFiles` element into glob patterns,
+/// or returns a message describing why the element is invalid.
+fn resolve_trailing_comma_file_patterns(value: &str) -> Result<Vec<String>, String> {
+  let expanded = glob::expand_braces(value).map_err(|err| format!("{}.", err))?;
+  let mut patterns = Vec::with_capacity(expanded.len());
+  for pattern in expanded {
+    let pattern = pattern.replace('\\', "/");
+    if pattern.starts_with("./") {
+      return Err("starting with dot slash (./) is not supported. Remove the leading dot slash.".to_string());
+    }
+    let segments = pattern
+      .split('/')
+      .filter(|segment| !segment.is_empty() && *segment != ".")
+      .collect::<Vec<_>>();
+    if segments.contains(&"..") {
+      return Err("containing a parent directory segment (..) is not supported.".to_string());
+    }
+    let pattern = segments.join("/");
+    if !pattern.is_empty() && !patterns.contains(&pattern) {
+      patterns.push(pattern);
+    }
+  }
+  if patterns.is_empty() {
+    return Err("is empty.".to_string());
+  }
+  Ok(patterns)
 }
 
 #[cfg(test)]
@@ -188,9 +204,80 @@ mod test {
         &global_config,
       );
       assert!(result.diagnostics.is_empty());
+      assert_eq!(result.config.json_trailing_comma_files, vec!["test.json".to_string()]);
+    }
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![
+            ConfigKeyValue::String("{j,t}sconfig.json".to_string()),
+            ConfigKeyValue::String("\\.vscode\\settings.json".to_string()),
+            ConfigKeyValue::String("/a//{b,/c/}/*.json".to_string()),
+          ]),
+        )]),
+        &global_config,
+      );
+      assert!(result.diagnostics.is_empty());
       assert_eq!(
         result.config.json_trailing_comma_files,
-        vec!["/test.json".to_string(), "\\test.json".to_string(),]
+        vec![
+          "jsconfig.json".to_string(),
+          "tsconfig.json".to_string(),
+          ".vscode/settings.json".to_string(),
+          "a/b/*.json".to_string(),
+          "a/c/*.json".to_string(),
+        ]
+      );
+    }
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![
+            ConfigKeyValue::String("/".to_string()),
+            ConfigKeyValue::String(".\\test.json".to_string()),
+            ConfigKeyValue::String("{./a.json,b.json}".to_string()),
+            ConfigKeyValue::String("a/../b.json".to_string()),
+            ConfigKeyValue::String("{a,b}".repeat(10)),
+            ConfigKeyValue::String("{,/}".to_string()),
+          ]),
+        )]),
+        &global_config,
+      );
+      assert!(result.config.json_trailing_comma_files.is_empty());
+      assert_eq!(
+        result
+          .diagnostics
+          .iter()
+          .map(|d| d.message.as_str())
+          .collect::<Vec<_>>(),
+        vec![
+          "Element at index 0 is empty.",
+          "Element at index 1 starting with dot slash (./) is not supported. Remove the leading dot slash.",
+          "Element at index 2 starting with dot slash (./) is not supported. Remove the leading dot slash.",
+          "Element at index 3 containing a parent directory segment (..) is not supported.",
+          "Element at index 4 expands to more than 1000 patterns.",
+          "Element at index 5 is empty.",
+        ]
+      );
+    }
+    {
+      let result = resolve_config(
+        ConfigKeyMap::from([(
+          "jsonTrailingCommaFiles".to_string(),
+          ConfigKeyValue::Array(vec![
+            ConfigKeyValue::String("a/./b.json".to_string()),
+            ConfigKeyValue::String("{a,a}.json".to_string()),
+            ConfigKeyValue::String("[{]id].json".to_string()),
+          ]),
+        )]),
+        &global_config,
+      );
+      assert!(result.diagnostics.is_empty());
+      assert_eq!(
+        result.config.json_trailing_comma_files,
+        vec!["a/b.json".to_string(), "a.json".to_string(), "[{]id].json".to_string()]
       );
     }
     {

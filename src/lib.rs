@@ -1,6 +1,7 @@
 pub mod configuration;
 mod format_text;
 mod generation;
+mod glob;
 mod package_json;
 
 pub use format_text::format_text;
