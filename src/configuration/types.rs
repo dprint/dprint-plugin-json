@@ -22,3 +22,21 @@ generate_str_to_from![
   [Never, "never"],
   [Jsonc, "jsonc"]
 ];
+
+#[derive(Debug, Clone, PartialEq, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EofNewLineKind {
+  /// Always end the file with a newline. (Default)
+  Always,
+  /// End the file with a newline only when it already ends with one.
+  Maintain,
+  /// Never end the file with a newline.
+  Never,
+}
+
+generate_str_to_from![
+  EofNewLineKind,
+  [Always, "always"],
+  [Maintain, "maintain"],
+  [Never, "never"]
+];

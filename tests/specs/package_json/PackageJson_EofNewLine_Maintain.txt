@@ -1,0 +1,23 @@
+-- /package.json --
+~~ eofNewLine: maintain ~~
+== should not add a newline when reordering a file without one ==
+{
+  "version": "1.0.0",
+  "name": "a"
+}
+[expect]
+{
+  "name": "a",
+  "version": "1.0.0"
+}
+== should keep the newline when reordering a file with one ==
+{
+  "version": "1.0.0",
+  "name": "a"
+}
+
+[expect]
+{
+  "name": "a",
+  "version": "1.0.0"
+}

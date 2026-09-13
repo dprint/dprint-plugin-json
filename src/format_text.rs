@@ -137,6 +137,7 @@ mod tests {
   use std::path::PathBuf;
 
   use crate::configuration::ConfigurationBuilder;
+  use crate::configuration::EofNewLineKind;
   use crate::configuration::TrailingCommaKind;
 
   use super::super::configuration::resolve_config;
@@ -243,6 +244,34 @@ mod tests {
   }
 
   #[test]
+  fn eof_new_line_maintain_whitespace() {
+    // the spec files can't express these since they normalize newlines and editors trim trailing spaces
+    let config = ConfigurationBuilder::new()
+      .eof_new_line(EofNewLineKind::Maintain)
+      .new_line_kind(NewLineKind::Auto)
+      .build();
+    assert_eq!(format(&config, "{\"a\":1}\r\n"), "{ \"a\": 1 }\r\n");
+    assert_eq!(format(&config, "{\"a\":1}\r\n\r\n"), "{ \"a\": 1 }\r\n");
+    assert_eq!(format(&config, "{\"a\":1}  "), "{ \"a\": 1 }");
+    assert_eq!(format(&config, "{\"a\":1}\n  "), "{ \"a\": 1 }\n");
+    assert_eq!(format(&config, "\u{FEFF}{\"a\":1}"), "{ \"a\": 1 }");
+
+    let config = ConfigurationBuilder::new()
+      .eof_new_line(EofNewLineKind::Maintain)
+      .build();
+    assert_eq!(format(&config, "{\"a\":1}\r"), "{ \"a\": 1 }\n");
+  }
+
+  #[test]
+  fn eof_new_line_never_crlf() {
+    let config = ConfigurationBuilder::new()
+      .eof_new_line(EofNewLineKind::Never)
+      .new_line_kind(NewLineKind::Auto)
+      .build();
+    assert_eq!(format(&config, "{\r\n  \"a\": 1\r\n}\r\n"), "{\r\n  \"a\": 1\r\n}");
+  }
+
+  #[test]
   fn should_strip_bom() {
     for input_text in ["\u{FEFF}{}", "\u{FEFF}{ }"] {
       let global_config = GlobalConfiguration::default();
@@ -250,5 +279,14 @@ mod tests {
       let output_text = format_text(Path::new("."), input_text, &config).unwrap().unwrap();
       assert_eq!(output_text, "{}\n");
     }
+  }
+
+  fn format(config: &Configuration, text: &str) -> String {
+    let output = format_text(Path::new("/file.json"), text, config)
+      .unwrap()
+      .unwrap_or_else(|| text.to_string());
+    // ensure formatting is stable
+    assert_eq!(format_text(Path::new("/file.json"), &output, config).unwrap(), None);
+    output
   }
 }

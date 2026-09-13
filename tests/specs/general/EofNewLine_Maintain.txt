@@ -1,0 +1,46 @@
+~~ eofNewLine: maintain ~~
+== should not add a newline to a file without one ==
+{"a":1}
+[expect]
+{ "a": 1 }
+== should keep the newline at the end of the file ==
+{"a":1}
+
+[expect]
+{ "a": 1 }
+
+== should collapse multiple newlines at the end of the file into one ==
+{"a":1}
+
+
+
+[expect]
+{ "a": 1 }
+
+== should not add a newline after a trailing line comment ==
+{} // comment
+[expect]
+{} // comment
+== should keep the newline after a trailing line comment ==
+{} // comment
+
+[expect]
+{} // comment
+
+== should not add a newline to a multi-line file without one ==
+{
+  "a": 1
+}
+[expect]
+{
+  "a": 1
+}
+== should keep the newline at the end of a multi-line file ==
+{
+  "a": 1
+}
+
+[expect]
+{
+  "a": 1
+}
