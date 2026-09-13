@@ -1,0 +1,69 @@
+-- /package.json --
+~~ trailingCommas: maintain ~~
+== should not add a trailing comma to a file written without one ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0"
+}
+
+== should keep the trailing comma a file was written with ==
+{
+  "version": "1.0.0",
+  "name": "my-package",
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0",
+}
+
+== should keep a nested section's trailing comma when it is reordered ==
+{
+  "dependencies": {
+    "zod": "^3",
+    "chalk": "^5",
+  },
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {
+    "chalk": "^5",
+    "zod": "^3",
+  }
+}
+
+== should decide each object's trailing comma independently ==
+{
+  "devDependencies": {
+    "typescript": "^5",
+    "chalk": "^5"
+  },
+  "peerDependencies": {
+    "zod": "^3",
+    "chalk": "^5",
+  },
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "devDependencies": {
+    "chalk": "^5",
+    "typescript": "^5"
+  },
+  "peerDependencies": {
+    "chalk": "^5",
+    "zod": "^3",
+  }
+}

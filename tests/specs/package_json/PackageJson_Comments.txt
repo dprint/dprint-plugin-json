@@ -1,0 +1,109 @@
+-- /package.json --
+== should move a comment with the property it was written above ==
+{
+  // the version
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  // the version
+  "version": "1.0.0"
+}
+
+== should move a block comment the same way ==
+{
+  /* the version */
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  /* the version */
+  "version": "1.0.0"
+}
+
+== should move a comment written after a property on the same line ==
+{
+  "version": "1.0.0", // the version
+  "name": "my-package"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0" // the version
+}
+
+== should leave a comment after the last property where it is ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+  // trailing
+}
+
+[expect]
+{
+  "name": "my-package",
+  "version": "1.0.0"
+  // trailing
+}
+
+== should move a comment with its property even across a blank line ==
+{
+  "dependencies": {
+    "zod": "^3",
+    "chalk": "^5"
+  },
+
+  // what this package is called
+  "name": "my-package"
+}
+
+[expect]
+{
+  // what this package is called
+  "name": "my-package",
+  "dependencies": {
+    "chalk": "^5",
+    "zod": "^3"
+  }
+}
+
+== should sort a section whose comment sits inside it ==
+{
+  "name": "my-package",
+  "dependencies": {
+    // pinned
+    "zod": "^3",
+    "chalk": "^5"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {
+    "chalk": "^5",
+    // pinned
+    "zod": "^3"
+  }
+}
+
+== should not fight with a dprint-ignore comment ==
+{
+  "version": "1.0.0",
+  // dprint-ignore
+  "name": [   1 ]
+}
+
+[expect]
+{
+  // dprint-ignore
+  "name": [   1 ],
+  "version": "1.0.0"
+}

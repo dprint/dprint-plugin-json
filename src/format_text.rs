@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use dprint_core::configuration::resolve_new_line_kind;
@@ -10,6 +11,7 @@ use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
 use super::generation::generate;
+use super::package_json;
 
 /// Error that occurs while formatting.
 ///
@@ -42,11 +44,18 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Op
 
 fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
-  let parse_result = parse(text)?;
+  // a package.json is parsed twice, once as a CST to reorder and once as the AST the printer
+  // wants, which costs little for a file that size
+  let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
+    package_json::apply_conventions(text, config)
+  } else {
+    Cow::Borrowed(text)
+  };
+  let parse_result = parse(&text)?;
   let is_jsonc = is_jsonc_file(path, config);
   Ok(dprint_core::formatting::format(
-    || generate(parse_result, text, config, is_jsonc),
-    config_to_print_options(text, config),
+    || generate(parse_result, &text, config, is_jsonc),
+    config_to_print_options(&text, config),
   ))
 }
 
@@ -55,7 +64,7 @@ pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting
   let parse_result = parse(text).unwrap();
 
   dprint_core::formatting::trace_printing(
-    || generate(parse_result, text, config),
+    || generate(parse_result, text, config, false),
     config_to_print_options(text, config),
   )
 }
@@ -81,7 +90,10 @@ fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
         &err.kind().to_string(),
         text,
       );
-      Err(FormatError { diagnostic, source: err })
+      Err(FormatError {
+        diagnostic,
+        source: err,
+      })
     }
   }
 }
@@ -123,6 +135,7 @@ mod tests {
   use std::path::PathBuf;
 
   use crate::configuration::ConfigurationBuilder;
+  use crate::configuration::TrailingCommaKind;
 
   use super::super::configuration::resolve_config;
   use super::*;
@@ -181,6 +194,35 @@ mod tests {
     if cfg!(windows) {
       assert!(is_jsonc_file(&PathBuf::from("test\\.vscode\\settings.json"), &config));
     }
+  }
+
+  #[test]
+  fn package_json_listed_as_a_trailing_comma_file() {
+    // opting package.json into jsonc is the caller's business; the conventions still apply, and
+    // the two compose into a reordered file with the trailing comma that was asked for
+    let config = ConfigurationBuilder::new()
+      .json_trailing_comma_files(vec!["package.json".to_string()])
+      .trailing_commas(TrailingCommaKind::Jsonc)
+      .build();
+    let text = "{\n  \"version\": \"1.0.0\",\n  \"name\": \"a\"\n}\n";
+    let output = format_text(Path::new("/package.json"), text, &config).unwrap().unwrap();
+    assert_eq!(output, "{\n  \"name\": \"a\",\n  \"version\": \"1.0.0\",\n}\n");
+  }
+
+  #[test]
+  fn package_json_that_fails_to_parse_reports_the_usual_diagnostic() {
+    // text that doesn't parse is handed straight back by the conventions, so the positions in the
+    // message are the ones the author wrote
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
+    let message = format_text(Path::new("/package.json"), "{ &*&* }", &config)
+      .err()
+      .unwrap()
+      .to_string();
+    assert_eq!(
+      message,
+      concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~")
+    );
   }
 
   #[test]

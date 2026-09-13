@@ -94,6 +94,18 @@
         "description": "Ex. `{\"key\": \"value\"}`"
       }]
     },
+    "packageJson.applyConventions": {
+      "description": "Whether to write a package.json file's properties in the conventional order, alphabetizing the dependency sections. A comment set off by a blank line in a dependency section heads a run, and each run is alphabetized on its own.",
+      "type": "boolean",
+      "default": true,
+      "oneOf": [{
+        "const": true,
+        "description": ""
+      }, {
+        "const": false,
+        "description": ""
+      }]
+    },
     "trailingCommas": {
       "description": "Whether to use trailing commas.",
       "type": "string",

@@ -104,6 +104,16 @@ impl ConfigurationBuilder {
     self.insert("spaceSurroundingProperties", value.into())
   }
 
+  /// Whether to write a `package.json` file's properties in the conventional order.
+  ///
+  /// The dependency sections are alphabetized, a run at a time where a comment set off by a blank
+  /// line heads each run.
+  ///
+  /// Default: `true`
+  pub fn package_json_apply_conventions(&mut self, value: bool) -> &mut Self {
+    self.insert("packageJson.applyConventions", value.into())
+  }
+
   /// Whether to use trailing commas.
   ///
   /// Default: `TrailingCommaKind::Jsonc`
@@ -162,12 +172,13 @@ mod tests {
       .array_prefer_single_line(true)
       .object_prefer_single_line(false)
       .space_surrounding_properties(false)
+      .package_json_apply_conventions(false)
       .trailing_commas(TrailingCommaKind::Always)
       .json_trailing_comma_files(vec!["tsconfig.json".to_string(), ".vscode/settings.json".to_string()])
       .ignore_node_comment_text("deno-fmt-ignore");
 
     let inner_config = config.get_inner_config();
-    assert_eq!(inner_config.len(), 12);
+    assert_eq!(inner_config.len(), 13);
     let diagnostics = resolve_config(inner_config, &GlobalConfiguration::default()).diagnostics;
     assert_eq!(diagnostics.len(), 0);
   }
@@ -206,6 +217,8 @@ mod tests {
     assert_eq!(config.ignore_node_comment_text, "deno-fmt-ignore");
     assert_eq!(config.array_prefer_single_line, false);
     assert_eq!(config.object_prefer_single_line, false);
+    // the preset leaves the package.json conventions on, so `deno fmt` applies them
+    assert_eq!(config.package_json_apply_conventions, true);
   }
 
   #[test]
