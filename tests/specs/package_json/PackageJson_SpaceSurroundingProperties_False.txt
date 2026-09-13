@@ -1,0 +1,7 @@
+-- /package.json --
+~~ spaceSurroundingProperties: false ~~
+== should reorder a single line object without the surrounding spaces ==
+{ "version": "1.0.0", "name": "my-package" }
+
+[expect]
+{"name": "my-package", "version": "1.0.0"}

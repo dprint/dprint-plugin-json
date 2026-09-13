@@ -1,0 +1,43 @@
+-- /package.json --
+~~ object.preferSingleLine: true ~~
+== should reorder and collapse in a single pass ==
+{
+  "version": "1.0.0",
+  "name": "my-package"
+}
+
+[expect]
+{ "name": "my-package", "version": "1.0.0" }
+
+== should sort a dependency section across a blank line the printer then removes ==
+{
+  "dependencies": {
+    "zz": "1",
+
+    "aa": "2"
+  }
+}
+
+[expect]
+{ "dependencies": { "aa": "2", "zz": "1" } }
+
+== should sort a section with a heading as a whole, since the printer folds its blank line away ==
+{
+  "dependencies": {
+    "zz": "1",
+
+    // heading
+    "bb": "2",
+    "aa": "3"
+  }
+}
+
+[expect]
+{
+  "dependencies": {
+    "aa": "3",
+    // heading
+    "bb": "2",
+    "zz": "1"
+  }
+}
