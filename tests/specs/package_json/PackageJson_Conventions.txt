@@ -124,7 +124,7 @@
 [expect]
 { "name": "my-package", "version": "1.0.0", "dependencies": { "chalk": "^5.0.0", "zod": "^3.0.0" } }
 
-== should place a section by convention and sort its contents ==
+== should place each section by convention and sort the ones that are maps ==
 {
   "overrides": { "b": "1", "a": "1" },
   "resolutions": { "b": "1", "a": "1" },
@@ -137,7 +137,7 @@
 {
   "name": "my-package",
   "bin": { "a": "./a.js", "b": "./b.js" },
-  "resolutions": { "a": "1", "b": "1" },
+  "resolutions": { "b": "1", "a": "1" },
   "overrides": { "a": "1", "b": "1" },
   "engines": { "node": "1", "npm": "1" }
 }
@@ -232,7 +232,7 @@
   }
 }
 
-== should leave a dependency in the run it was written in ==
+== should sort across a blank line with nothing under it, which is only spacing ==
 {
   "dependencies": {
     "zod": "1",
@@ -244,10 +244,22 @@
 [expect]
 {
   "dependencies": {
-    "zod": "1",
+    "chalk": "1",
 
-    "chalk": "1"
+    "zod": "1"
   }
+}
+
+== should sort a single line dependency section whose blank line the printer removes ==
+{
+  "dependencies": { "zz": "1",
+
+ "aa": "2" }
+}
+
+[expect]
+{
+  "dependencies": { "aa": "2", "zz": "1" }
 }
 
 == should sort engines as one, since a blank line there is only spacing ==

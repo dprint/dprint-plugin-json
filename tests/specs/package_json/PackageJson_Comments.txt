@@ -53,7 +53,7 @@
   // trailing
 }
 
-== should move a comment above a section with that section ==
+== should move a comment with its property even across a blank line ==
 {
   "dependencies": {
     "zod": "^3",

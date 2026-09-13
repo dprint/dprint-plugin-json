@@ -106,6 +106,9 @@ impl ConfigurationBuilder {
 
   /// Whether to write a `package.json` file's properties in the conventional order.
   ///
+  /// The dependency sections are alphabetized, a run at a time where a comment set off by a blank
+  /// line heads each run.
+  ///
   /// Default: `true`
   pub fn package_json_apply_conventions(&mut self, value: bool) -> &mut Self {
     self.insert("packageJson.applyConventions", value.into())

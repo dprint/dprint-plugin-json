@@ -8,3 +8,15 @@
 
 [expect]
 { "name": "my-package", "version": "1.0.0" }
+
+== should sort a dependency section across a blank line the printer then removes ==
+{
+  "dependencies": {
+    "zz": "1",
+
+    "aa": "2"
+  }
+}
+
+[expect]
+{ "dependencies": { "aa": "2", "zz": "1" } }

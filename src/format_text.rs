@@ -44,6 +44,8 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Op
 
 fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
+  // a package.json is parsed twice, once as a CST to reorder and once as the AST the printer
+  // wants, which costs little for a file that size
   let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
     package_json::apply_conventions(text)
   } else {
@@ -205,6 +207,22 @@ mod tests {
     let text = "{\n  \"version\": \"1.0.0\",\n  \"name\": \"a\"\n}\n";
     let output = format_text(Path::new("/package.json"), text, &config).unwrap().unwrap();
     assert_eq!(output, "{\n  \"name\": \"a\",\n  \"version\": \"1.0.0\",\n}\n");
+  }
+
+  #[test]
+  fn package_json_that_fails_to_parse_reports_the_usual_diagnostic() {
+    // text that doesn't parse is handed straight back by the conventions, so the positions in the
+    // message are the ones the author wrote
+    let global_config = GlobalConfiguration::default();
+    let config = resolve_config(ConfigKeyMap::new(), &global_config).config;
+    let message = format_text(Path::new("/package.json"), "{ &*&* }", &config)
+      .err()
+      .unwrap()
+      .to_string();
+    assert_eq!(
+      message,
+      concat!("Line 1, column 3: Unexpected token\n", "\n", "  { &*&* }\n", "    ~")
+    );
   }
 
   #[test]
