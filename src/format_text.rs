@@ -10,7 +10,9 @@ use jsonc_parser::errors::ParseError;
 use jsonc_parser::parse_to_ast;
 
 use super::configuration::Configuration;
+use super::configuration::TrailingCommaKind;
 use super::generation::generate;
+use super::glob;
 use super::package_json;
 
 /// Error that occurs while formatting.
@@ -50,7 +52,8 @@ fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<
     Cow::Borrowed(text)
   };
   let parse_result = parse(&text)?;
-  let is_jsonc = is_jsonc_file(path, config);
+  // only used for jsonc trailing commas, so avoid matching the path otherwise
+  let is_jsonc = config.trailing_commas == TrailingCommaKind::Jsonc && is_jsonc_file(path, config);
   Ok(dprint_core::formatting::format(
     || generate(parse_result, &text, config, is_jsonc),
     config_to_print_options(&text, config),
@@ -115,14 +118,15 @@ fn is_jsonc_file(path: &Path, config: &Configuration) -> bool {
   }
 
   fn is_special_json_file(path: &Path, config: &Configuration) -> bool {
-    let path = path.to_string_lossy();
-    for file_name in &config.json_trailing_comma_files {
-      if path.ends_with(file_name) {
-        return true;
-      }
+    if config.json_trailing_comma_files.is_empty() {
+      return false;
     }
 
-    false
+    let path = path.to_string_lossy();
+    config
+      .json_trailing_comma_files
+      .iter()
+      .any(|pattern| glob::matches_path_end(pattern, &path))
   }
 
   has_jsonc_extension(path) || is_special_json_file(path, config)
@@ -193,6 +197,21 @@ mod tests {
     if cfg!(windows) {
       assert!(is_jsonc_file(&PathBuf::from("test\\.vscode\\settings.json"), &config));
     }
+  }
+
+  #[test]
+  fn test_is_jsonc_file_globs() {
+    let config = ConfigurationBuilder::new()
+      .json_trailing_comma_files(vec!["{j,t}sconfig*.json".to_string(), ".vscode/*.json".to_string()])
+      .build();
+    assert!(is_jsonc_file(&PathBuf::from("/tsconfig.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/a/jsconfig.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/a/tsconfig.lib.prod.json"), &config));
+    assert!(!is_jsonc_file(&PathBuf::from("/a/psconfig.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("/a/.vscode/tasks.json"), &config));
+    assert!(!is_jsonc_file(&PathBuf::from("/a/.vscode/sub/tasks.json"), &config));
+    assert!(!is_jsonc_file(&PathBuf::from("/a/vscode/tasks.json"), &config));
+    assert!(is_jsonc_file(&PathBuf::from("C:\\a\\.vscode\\launch.json"), &config));
   }
 
   #[test]

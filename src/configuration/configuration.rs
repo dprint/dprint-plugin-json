@@ -23,5 +23,9 @@ pub struct Configuration {
   #[serde(rename = "packageJson.applyConventions")]
   pub package_json_apply_conventions: bool,
   pub trailing_commas: TrailingCommaKind,
+  /// Glob patterns matched against the end of a file path to treat the file as JSONC.
+  ///
+  /// Brace groups (ex. `{a,b}`) are expanded when resolving the configuration, so
+  /// they aren't supported here.
   pub json_trailing_comma_files: Vec<String>,
 }
