@@ -186,14 +186,17 @@
   }
 }
 
-== should keep a blank line whose property stays where it was ==
+== should sort each run of dependencies on its own ==
 {
   "name": "my-package",
 
   "dependencies": {
     "zod": "1",
+    "chalk": "1",
 
-    "chalk": "1"
+    // the ones we patched
+    "semver": "1",
+    "glob": "1"
   }
 }
 
@@ -203,6 +206,63 @@
 
   "dependencies": {
     "chalk": "1",
+    "zod": "1",
+
+    // the ones we patched
+    "glob": "1",
+    "semver": "1"
+  }
+}
+
+== should read a comment with no blank line above it as being about the dependency under it ==
+{
+  "dependencies": {
+    // only zod needs this
+    "zod": "1",
+    "chalk": "1"
+  }
+}
+
+[expect]
+{
+  "dependencies": {
+    "chalk": "1",
+    // only zod needs this
     "zod": "1"
+  }
+}
+
+== should leave a dependency in the run it was written in ==
+{
+  "dependencies": {
+    "zod": "1",
+
+    "chalk": "1"
+  }
+}
+
+[expect]
+{
+  "dependencies": {
+    "zod": "1",
+
+    "chalk": "1"
+  }
+}
+
+== should sort engines as one, since a blank line there is only spacing ==
+{
+  "engines": {
+    "npm": ">=9",
+
+    "node": ">=20"
+  }
+}
+
+[expect]
+{
+  "engines": {
+    "node": ">=20",
+    "npm": ">=9"
   }
 }

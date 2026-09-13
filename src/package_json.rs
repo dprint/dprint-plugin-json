@@ -31,12 +31,12 @@ pub fn apply_conventions(text: &str) -> Cow<'_, str> {
     return Cow::Borrowed(text);
   };
 
-  sort_properties(&root_object, compare_top_level_fields);
+  sort_properties(&root_object, BlankLines::Ignore, compare_top_level_fields);
   for prop in root_object.properties() {
-    if ALPHABETICAL_SECTIONS.contains(&prop.decoded_name().unwrap_or_default().as_str())
+    if let Some(blank_lines) = alphabetical_section(&prop.decoded_name().unwrap_or_default())
       && let Some(section) = prop.object_value()
     {
-      sort_properties(&section, |left, right| {
+      sort_properties(&section, blank_lines, |left, right| {
         compare_names(&decoded_name(left), &decoded_name(right))
       });
     }
@@ -52,28 +52,58 @@ pub fn apply_conventions(text: &str) -> Cow<'_, str> {
   }
 }
 
-/// The sections whose properties are written in alphabetical order.
+/// What a blank line between properties is taken to mean.
+#[derive(Clone, Copy)]
+enum BlankLines {
+  /// A divider. A long dependency list is often written as runs with a heading over each, and a
+  /// dependency belongs to its run rather than to the section as a whole, so each run is sorted on
+  /// its own and the heading stays over it.
+  Divide,
+  /// Nothing but spacing, so the object is sorted as one.
+  Ignore,
+}
+
+/// The sections whose properties are written in alphabetical order, and what a blank line in each
+/// is taken to mean.
 ///
 /// Only maps keyed by a package name or similar appear here, where the order carries no meaning
-/// beyond making an entry easy to find.
-const ALPHABETICAL_SECTIONS: &[&str] = &[
-  "bin",
-  "dependencies",
-  "dependenciesMeta",
-  "devDependencies",
-  "engines",
-  "optionalDependencies",
-  "overrides",
-  "peerDependencies",
-  "peerDependenciesMeta",
-  "resolutions",
+/// beyond making an entry easy to find. Dependencies are the ones people group; nobody writes
+/// `engines` or `bin` in runs, so a blank line there is just spacing.
+const ALPHABETICAL_SECTIONS: &[(&str, BlankLines)] = &[
+  ("bin", BlankLines::Ignore),
+  ("dependencies", BlankLines::Divide),
+  ("dependenciesMeta", BlankLines::Divide),
+  ("devDependencies", BlankLines::Divide),
+  ("engines", BlankLines::Ignore),
+  ("optionalDependencies", BlankLines::Divide),
+  ("overrides", BlankLines::Divide),
+  ("peerDependencies", BlankLines::Divide),
+  ("peerDependenciesMeta", BlankLines::Divide),
+  ("resolutions", BlankLines::Divide),
 ];
 
-fn sort_properties(obj: &CstObject, compare: impl FnMut(&CstObjectProp, &CstObjectProp) -> Ordering) {
-  // The comments above a property travel with it rather than staying put. A conventional order
-  // rearranges the whole file, so a comment left behind would end up over a property it says
-  // nothing about, and a comment written above `dependencies` is almost always about those.
-  obj.sort_properties().by(compare)
+fn alphabetical_section(name: &str) -> Option<BlankLines> {
+  ALPHABETICAL_SECTIONS
+    .iter()
+    .find(|(section, _)| *section == name)
+    .map(|(_, blank_lines)| *blank_lines)
+}
+
+fn sort_properties(
+  obj: &CstObject,
+  blank_lines: BlankLines,
+  compare: impl FnMut(&CstObjectProp, &CstObjectProp) -> Ordering,
+) {
+  let sort = obj.sort_properties();
+  // A comment written above a property travels with it, since a conventional order rearranges the
+  // whole file and a comment left behind would end up over a property it says nothing about. The
+  // exception is a heading over a run of dependencies: sorting each run on its own keeps the
+  // heading over the run it describes, which is what dividing on blank lines does.
+  let sort = match blank_lines {
+    BlankLines::Divide => sort.within_groups(),
+    BlankLines::Ignore => sort,
+  };
+  sort.by(compare)
 }
 
 fn compare_top_level_fields(left: &CstObjectProp, right: &CstObjectProp) -> Ordering {
@@ -294,7 +324,7 @@ mod tests {
 
   #[test]
   fn every_alphabetical_section_is_a_known_field() {
-    for section in ALPHABETICAL_SECTIONS {
+    for (section, _) in ALPHABETICAL_SECTIONS {
       assert!(FIELD_ORDER.contains(section), "{} is missing from FIELD_ORDER", section);
     }
   }
