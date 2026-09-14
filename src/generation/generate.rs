@@ -95,7 +95,7 @@ fn gen_node_with_inner<'a>(
   }
 
   // generate the node
-  if has_ignore_comment(leading_comments, context) {
+  if has_ignore_comment(leading_comments.map(|c| c.as_slice()), context) {
     items.push_force_current_line_indentation();
     items.extend(inner_gen(
       ir_helpers::gen_from_raw_string(node.text(context.text)),
@@ -244,6 +244,10 @@ fn gen_dangling_comments<'a: 'b, 'b>(keys: &[usize], context: &mut Context<'a, '
   let Some(&after) = keys.first() else {
     return items;
   };
+  // this runs for every property and element, so avoid computing the line when there's nothing to check
+  if !keys.iter().any(|key| context.comments.contains_key(key)) {
+    return items;
+  }
   let after_line = context.text_info.line_index(after);
   let mut dangling: Vec<&'b Comment<'a>> = keys
     .iter()
@@ -784,7 +788,7 @@ fn gen_comment(comment: &Comment, context: &mut Context) -> Option<PrintItems> {
   })
 }
 
-fn has_ignore_comment(leading_comments: Option<&Rc<Vec<Comment>>>, context: &Context) -> bool {
+fn has_ignore_comment(leading_comments: Option<&[Comment]>, context: &Context) -> bool {
   if let Some(last_comment) = leading_comments.and_then(|c| c.last()) {
     ir_helpers::text_has_dprint_ignore(last_comment.text(), &context.config.ignore_node_comment_text)
   } else {
@@ -808,7 +812,8 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
 /// Escapes control characters (U+0000 through U+001F), which JSON doesn't allow
 /// unescaped in strings. The parser accepts them and the printer can't handle raw newlines.
 fn escape_control_chars(text: &str) -> Cow<'_, str> {
-  if !text.chars().any(|c| c < '\u{20}') {
+  // checking bytes is enough since every byte of a multi-byte utf-8 char is at least 0x80
+  if !text.bytes().any(|b| b < 0x20) {
     return Cow::Borrowed(text);
   }
 

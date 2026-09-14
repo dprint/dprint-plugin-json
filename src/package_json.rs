@@ -101,7 +101,7 @@ fn sort_dependencies(section: &CstObject, config: &Configuration) {
   section
     .sort_properties()
     .pin_comment_headers()
-    .by_key(|prop| (runs.get(&prop.child_index()).copied(), NpmName::of(prop)));
+    .by_key(|prop| (runs[&prop.child_index()], NpmName::of(prop)));
 }
 
 /// Whether the section's first property is written on a line after its open brace, which is what
@@ -132,11 +132,10 @@ fn has_heading(prop: &CstObjectProp) -> bool {
 /// matches, so sorting them could change what gets installed.
 fn names_a_package_twice(overrides: &CstObject) -> bool {
   let mut seen = HashSet::new();
-  overrides.properties().iter().any(|prop| {
-    let mut name = decoded_name(prop);
-    name.truncate(package_name(&name).len());
-    !seen.insert(name)
-  })
+  overrides
+    .properties()
+    .iter()
+    .any(|prop| !seen.insert(package_name(&decoded_name(prop)).to_string()))
 }
 
 /// The package a key names without any version written after it, so that `foo@^2` is `foo` and
@@ -150,14 +149,11 @@ fn package_name(key: &str) -> &str {
   }
 }
 
-/// The sort key of a top level field.
-///
-/// Keys are computed once per property rather than on every comparison, which would decode both
-/// names each time.
+/// The key that sorts a top level field into place: the fields the conventions know come first, in
+/// their order, and a field they don't know goes below them, in alphabetical order, with the
+/// underscore prefixed fields npm adds to an installed package (`_id`, `_resolved`, ...) last.
 fn top_level_field_key(prop: &CstObjectProp) -> (usize, bool, NpmName) {
   let name = decoded_name(prop);
-  // a field the conventions don't know goes below the ones they do, in alphabetical order, with
-  // the underscore prefixed fields npm adds to an installed package (`_id`, `_resolved`, ...) last
   let index = field_index(&name).unwrap_or(FIELD_ORDER.len());
   (index, name.starts_with('_'), NpmName(name))
 }
