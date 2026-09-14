@@ -110,11 +110,7 @@ fn config_to_print_options(text: &str, config: &Configuration) -> PrintOptions {
 
 fn is_jsonc_file(path: &Path, config: &Configuration) -> bool {
   fn has_jsonc_extension(path: &Path) -> bool {
-    if let Some(ext) = path.extension() {
-      return ext.to_string_lossy().to_ascii_lowercase() == "jsonc";
-    }
-
-    false
+    path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("jsonc"))
   }
 
   fn is_special_json_file(path: &Path, config: &Configuration) -> bool {
