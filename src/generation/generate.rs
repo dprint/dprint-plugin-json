@@ -339,13 +339,21 @@ fn gen_comma_separated_values<'a>(
         };
         let items = ir_helpers::new_line_group({
           let is_final_node = i == nodes_count - 1;
-          let use_comma_for_last = !is_final_node
-            || match context.config.trailing_commas {
+          let use_comma_for_last = !is_final_node || {
+            let leading_comments = context.comments.get(&value.start()).map(|c| c.as_slice());
+            let trailing_commas = if has_ignore_comment(leading_comments, context) {
+              // an ignore comment also applies to the node's trailing comma
+              TrailingCommaKind::Maintain
+            } else {
+              context.config.trailing_commas
+            };
+            match trailing_commas {
               TrailingCommaKind::Always => true,
               TrailingCommaKind::Maintain => context.token_finder.get_next_token_if_comma(&value).is_some(),
               TrailingCommaKind::Jsonc => context.is_jsonc,
               TrailingCommaKind::Never => false,
-            };
+            }
+          };
           let maybe_comma = if !is_final_node {
             sc_items(COMMA_SC)
           } else if use_comma_for_last {

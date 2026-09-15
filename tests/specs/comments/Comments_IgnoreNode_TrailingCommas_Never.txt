@@ -1,0 +1,32 @@
+~~ trailingCommas: never ~~
+== should maintain the trailing comma of an ignored node ==
+{
+  "tasks": {
+    // dprint-ignore
+    "foo": "echo bar",
+  },
+  "other": {
+    "foo":   "echo bar",
+  },
+  "array": [
+    1,
+    // dprint-ignore
+    [ 2,   3 ],
+  ]
+}
+
+[expect]
+{
+  "tasks": {
+    // dprint-ignore
+    "foo": "echo bar",
+  },
+  "other": {
+    "foo": "echo bar"
+  },
+  "array": [
+    1,
+    // dprint-ignore
+    [ 2,   3 ],
+  ]
+}
