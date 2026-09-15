@@ -40,7 +40,7 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
   // A comment written above a top level property travels with it. A conventional order rearranges
   // the whole file, so a comment left behind would end up over a property it says nothing about,
   // and one written above `dependencies` is almost always about those.
-  root_object.sort_properties().by(compare_top_level_fields);
+  root_object.sort_properties().by_key(top_level_field_key);
   for prop in root_object.properties() {
     let Some(section) = alphabetical_section(&decoded_name(&prop)) else {
       continue;
@@ -49,7 +49,7 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
       continue;
     };
     match section {
-      Section::Plain => object.sort_properties().by(compare_properties),
+      Section::Plain => object.sort_properties().by_key(NpmName::of),
       Section::Dependencies => sort_dependencies(&object, config),
       Section::Overrides if !names_a_package_twice(&object) => sort_dependencies(&object, config),
       Section::Overrides => {}
@@ -83,7 +83,7 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
 /// as a whole.
 fn sort_dependencies(section: &CstObject, config: &Configuration) {
   if config.object_prefer_single_line || !opens_on_its_own_line(section) {
-    section.sort_properties().by(compare_properties);
+    section.sort_properties().by_key(NpmName::of);
     return;
   }
 
@@ -98,12 +98,10 @@ fn sort_dependencies(section: &CstObject, config: &Configuration) {
       (prop.child_index(), run)
     })
     .collect::<HashMap<_, _>>();
-  section.sort_properties().pin_comment_headers().by(|left, right| {
-    runs
-      .get(&left.child_index())
-      .cmp(&runs.get(&right.child_index()))
-      .then_with(|| compare_properties(left, right))
-  });
+  section
+    .sort_properties()
+    .pin_comment_headers()
+    .by_key(|prop| (runs[&prop.child_index()], NpmName::of(prop)));
 }
 
 /// Whether the section's first property is written on a line after its open brace, which is what
@@ -151,24 +149,35 @@ fn package_name(key: &str) -> &str {
   }
 }
 
-fn compare_top_level_fields(left: &CstObjectProp, right: &CstObjectProp) -> Ordering {
-  let left = decoded_name(left);
-  let right = decoded_name(right);
-  match (field_index(&left), field_index(&right)) {
-    (Some(left), Some(right)) => left.cmp(&right),
-    (Some(_), None) => Ordering::Less,
-    (None, Some(_)) => Ordering::Greater,
-    // a field the conventions don't know goes below the ones they do, in alphabetical order, with
-    // the underscore prefixed fields npm adds to an installed package (`_id`, `_resolved`, ...) last
-    (None, None) => left
-      .starts_with('_')
-      .cmp(&right.starts_with('_'))
-      .then_with(|| compare_names(&left, &right)),
+/// The key that sorts a top level field into place: the fields the conventions know come first, in
+/// their order, and a field they don't know goes below them, in alphabetical order, with the
+/// underscore prefixed fields npm adds to an installed package (`_id`, `_resolved`, ...) last.
+fn top_level_field_key(prop: &CstObjectProp) -> (usize, bool, NpmName) {
+  let name = decoded_name(prop);
+  let index = field_index(&name).unwrap_or(FIELD_ORDER.len());
+  (index, name.starts_with('_'), NpmName(name))
+}
+
+/// A property name that orders the way npm orders names, as described on [`compare_names`].
+#[derive(PartialEq, Eq)]
+struct NpmName(String);
+
+impl NpmName {
+  fn of(prop: &CstObjectProp) -> Self {
+    NpmName(decoded_name(prop))
   }
 }
 
-fn compare_properties(left: &CstObjectProp, right: &CstObjectProp) -> Ordering {
-  compare_names(&decoded_name(left), &decoded_name(right))
+impl Ord for NpmName {
+  fn cmp(&self, other: &Self) -> Ordering {
+    compare_names(&self.0, &other.0)
+  }
+}
+
+impl PartialOrd for NpmName {
+  fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    Some(self.cmp(other))
+  }
 }
 
 /// Compares two names the way npm does, so that formatting doesn't undo npm's own sorting.
