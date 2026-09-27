@@ -1,0 +1,18 @@
+~~ trailingCommas: never ~~
+== should remove the trailing comma from the last member ==
+{
+  "a": 1,
+  [|"c":3|],
+}
+
+[expect]
+{
+  "a": 1,
+  [|"c": 3|]
+}
+
+== should remove the trailing comma in a single line array ==
+{"x": [1, [|2|],]}
+
+[expect]
+{"x": [1, 2]}

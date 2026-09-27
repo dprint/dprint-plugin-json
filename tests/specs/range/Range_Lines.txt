@@ -1,0 +1,118 @@
+== should fix the indentation of the touched line ==
+{
+  "a": 1,
+      [|"b":2|],
+  "c": 3
+}
+
+[expect]
+{
+  "a": 1,
+  [|"b": 2,|]
+  "c": 3
+}
+
+== should indent a multi-line member consistently ==
+{
+  "a": 1,
+      [|"b": {
+"x":1}|],
+  "c": 3
+}
+
+[expect]
+{
+  "a": 1,
+  [|"b": {
+    "x": 1
+  },|]
+  "c": 3
+}
+
+== should format the separator and trailing comments of the last member ==
+{
+  "a": 1,
+  [|"b":2|]   ,   /*x*/  // y
+  "c": 3
+}
+
+[expect]
+{
+  "a": 1,
+  [|"b": 2, /*x*/ // y|]
+  "c": 3
+}
+
+== should add a missing comma ==
+{
+  "a": 1,
+  [|"b":2|]
+  "c": 3
+}
+
+[expect]
+{
+  "a": 1,
+  [|"b": 2,|]
+  "c": 3
+}
+
+== should format the separator before a member on the same line ==
+{
+  "a": [1,[|2|],3]
+}
+
+[expect]
+{
+  "a": [1, [|2|], 3]
+}
+
+== should format the member holding an array when the line breaks around its parent change ==
+{
+  "a": 1,
+  "o": {"p": [
+  1, 2,
+  [|3|], 4
+]}
+}
+
+[expect]
+{
+  "a": 1,
+  "o": {
+    "p": [
+      1,
+      2,
+      3,
+      4
+    ]
+  }
+}
+
+== should not change anything for a cursor before the root value ==
+// comment[||]
+{"a":1}
+
+[expect]
+// comment
+{"a":1}
+
+== should not change anything for a cursor after the root value ==
+{"a":1}[||]
+
+[expect]
+{"a":1}
+
+== should keep separators with comma-first style ==
+[
+  1
+  , [|2|]
+  , 3
+]
+
+[expect]
+[
+  1,
+  2,
+  3
+]

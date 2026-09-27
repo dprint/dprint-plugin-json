@@ -1,0 +1,12 @@
+~~ trailingCommas: always ~~
+== should add the trailing comma to the last member ==
+{
+  "a": 1,
+  [|"c":3|]
+}
+
+[expect]
+{
+  "a": 1,
+  [|"c": 3,|]
+}

@@ -11,7 +11,7 @@
   [|"b": { "c": 1, "d": 2 }|]
 }
 
-== should format the whole object when the line breaks around the members change ==
+== should format the member holding the object when the line breaks around the members change ==
 {
   "a":1,
   "b":{
@@ -21,7 +21,7 @@
 [expect]
 {
   "a":1,
-  "b":{
+  "b": {
     "c": 1,
     "d": 2
   }
