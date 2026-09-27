@@ -63,9 +63,12 @@ impl SyncPluginHandler<Configuration> for JsonPluginHandler {
     _format_with_host: impl FnMut(SyncHostFormatRequest) -> FormatResult,
   ) -> FormatResult {
     let file_text = String::from_utf8(request.file_bytes)?;
-    super::format_text(request.file_path, &file_text, request.config)
-      .map(|maybe_text| maybe_text.map(|t| t.into_bytes()))
-      .map_err(FormatError::new)
+    match request.range {
+      Some(range) => super::format_text_range(request.file_path, &file_text, range, request.config),
+      None => super::format_text(request.file_path, &file_text, request.config),
+    }
+    .map(|maybe_text| maybe_text.map(|t| t.into_bytes()))
+    .map_err(FormatError::new)
   }
 }
 

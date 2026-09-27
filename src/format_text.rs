@@ -44,7 +44,7 @@ pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Op
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
-fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
+pub(crate) fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
   let text = strip_bom(text);
   let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
     package_json::apply_conventions(text, config)
@@ -70,11 +70,11 @@ pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting
   )
 }
 
-fn strip_bom(text: &str) -> &str {
+pub(crate) fn strip_bom(text: &str) -> &str {
   text.strip_prefix("\u{FEFF}").unwrap_or(text)
 }
 
-fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
+pub(crate) fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
   let parse_result = parse_to_ast(
     text,
     &CollectOptions {

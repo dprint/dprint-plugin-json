@@ -28,12 +28,16 @@ fn test_specs() {
     },
     {
       let global_config = global_config.clone();
-      Arc::new(move |path, file_text, spec_config| {
+      Arc::new(move |path, file_text, range, spec_config| {
         let spec_config: ConfigKeyMap = serde_json::from_value(spec_config.clone().into()).unwrap();
         let config_result = resolve_config(spec_config, &global_config);
         ensure_no_diagnostics(&config_result.diagnostics);
 
-        format_text(&path, &file_text, &config_result.config).map_err(anyhow::Error::from)
+        let result = match range {
+          Some(range) => format_text_range(path, file_text, range, &config_result.config),
+          None => format_text(path, file_text, &config_result.config),
+        };
+        result.map_err(|err| err.into())
       })
     },
     Arc::new(move |_, _file_text, _spec_config| {

@@ -1,0 +1,46 @@
+-- package.json --
+== should find a property that the conventions move ==
+{
+  [|"version":"1.0.0"|],
+  "dependencies": {"b":"1",
+    "a":"1"},
+  "name":"a"
+}
+
+[expect]
+{
+  [|"version": "1.0.0",|]
+  "dependencies": {"b":"1",
+    "a":"1"},
+  "name":"a"
+}
+
+== should format the member holding an object the conventions reorder ==
+{
+  "name":"a",
+  "version":"1.0.0",
+  "dependencies": {[|"b":"1",
+    "a"|]:"1"}
+}
+
+[expect]
+{
+  "name":"a",
+  "version":"1.0.0",
+  "dependencies": { "a": "1", "b": "1" }
+}
+
+== should format the file when a member moved to the end would lose its comma ==
+{
+  "version":"1.0.0",
+  "dependencies": {[|"b":"1",
+    "a"|]:"1"},
+  "name":"a"
+}
+
+[expect]
+{
+  "name": "a",
+  "version": "1.0.0",
+  "dependencies": { "a": "1", "b": "1" }
+}
