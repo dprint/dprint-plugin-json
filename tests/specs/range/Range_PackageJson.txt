@@ -1,0 +1,31 @@
+-- package.json --
+== should find a property that the conventions move ==
+{
+  [|"version":"1.0.0"|],
+  "dependencies": {"b":"1",
+    "a":"1"},
+  "name":"a"
+}
+
+[expect]
+{
+  [|"version": "1.0.0"|],
+  "dependencies": {"b":"1",
+    "a":"1"},
+  "name":"a"
+}
+
+== should format the whole object when the conventions reorder its members ==
+{
+  "version":"1.0.0",
+  "dependencies": {[|"b":"1",
+    "a"|]:"1"},
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  "dependencies": { "a": "1", "b": "1" },
+  "name":"a"
+}

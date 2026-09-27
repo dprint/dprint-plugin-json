@@ -1,9 +1,11 @@
 pub mod configuration;
+mod format_range;
 mod format_text;
 mod generation;
 mod glob;
 mod package_json;
 
+pub use format_range::format_text_range;
 pub use format_text::format_text;
 
 #[cfg(feature = "tracing")]

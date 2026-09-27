@@ -1,0 +1,117 @@
+== should format only the touched property ==
+{
+  "a":1,
+  [|"b":2|],
+  "c":3
+}
+
+[expect]
+{
+  "a":1,
+  [|"b": 2|],
+  "c":3
+}
+
+== should format all the touched properties ==
+{
+  "a":1,
+  "b"[|:2,
+  "c"|]:3,
+  "d":4
+}
+
+[expect]
+{
+  "a":1,
+  [|"b": 2,
+  "c": 3|],
+  "d":4
+}
+
+== should widen a partial selection to the whole member ==
+{
+  "a":   [|[1,2]|],
+  "b":2
+}
+
+[expect]
+{
+  [|"a": [1, 2]|],
+  "b":2
+}
+
+== should format the touched array elements ==
+[
+  {"a":1},
+  [|{"b":2}|],
+  {"c":3}
+]
+
+[expect]
+[
+  {"a":1},
+  [|{ "b": 2 }|],
+  {"c":3}
+]
+
+== should descend into nested objects ==
+{
+  "a":1,
+  "b": {
+    "c":1,
+    [|"d":[1,2]|]
+  }
+}
+
+[expect]
+{
+  "a":1,
+  "b": {
+    "c":1,
+    [|"d": [1, 2]|]
+  }
+}
+
+== should format the member at the cursor ==
+{
+  "a":1,
+  "b": {
+    "c":1,
+    "d":[||][1,2]
+  }
+}
+
+[expect]
+{
+  "a":1,
+  "b": {
+    "c":1,
+    "d": [1, 2]
+  }
+}
+
+== should not change anything for a range between members ==
+{
+  "a":1,
+[||]
+  "b":2
+}
+
+[expect]
+{
+  "a":1,
+
+  "b":2
+}
+
+== should find the property when there are duplicate names ==
+{
+  "a":1,
+  [|"a":2|]
+}
+
+[expect]
+{
+  "a":1,
+  [|"a": 2|]
+}
