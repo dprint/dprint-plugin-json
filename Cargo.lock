@@ -186,7 +186,7 @@ dependencies = [
 
 [[package]]
 name = "dprint-plugin-json"
-version = "0.24.0"
+version = "0.25.0"
 dependencies = [
  "debug-here",
  "dprint-core",
