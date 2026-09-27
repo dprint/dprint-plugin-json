@@ -293,6 +293,24 @@ mod tests {
     assert_eq!(format(&config, "\"a\\n\\\\\u{7F}\""), "\"a\\n\\\\\u{7F}\"\n");
   }
 
+  #[test]
+  fn handles_json5_escapes_in_strings() {
+    // the spec files can't reliably express these since editors change raw line breaks and tabs
+    let config = ConfigurationBuilder::new().build();
+    // line continuations mean nothing
+    assert_eq!(format(&config, "\"a \\\nb\""), "\"a b\"\n");
+    assert_eq!(format(&config, "'a \\\r\nb \\\rc'"), "\"a b c\"\n");
+    // an escaped control character is that character
+    assert_eq!(format(&config, "\"a\\\tb\""), "\"a\\tb\"\n");
+    // an escaped backslash before a control character isn't an escape of it
+    assert_eq!(format(&config, "\"a\\\\\nb\""), "\"a\\\\\\nb\"\n");
+    // single quoted strings with escaped quotes
+    assert_eq!(format(&config, r#"'\"'"#), r#""\"""#.to_string() + "\n");
+    assert_eq!(format(&config, r#"'a\\\'b"c'"#), r#""a\\'b\"c""#.to_string() + "\n");
+    // other json5 escapes are left alone
+    assert_eq!(format(&config, r#""\x41\v\0""#), r#""\x41\v\0""#.to_string() + "\n");
+  }
+
   fn format(config: &Configuration, text: &str) -> String {
     let output = format_text(Path::new("/file.json"), text, config)
       .unwrap()

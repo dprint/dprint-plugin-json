@@ -1,0 +1,17 @@
+== should keep json5 numbers as written ==
+{a: .5, b: +5, c: 5., d: Infinity, e: -Infinity, f: NaN, g: 0xFF, h: 5.e3}
+
+[expect]
+{ "a": .5, "b": +5, "c": 5., "d": Infinity, "e": -Infinity, "f": NaN, "g": 0xFF, "h": 5.e3 }
+
+== should quote json5 property names ==
+{$key: 1, _a$b: 2, true: 3, false: 4, null: 5, NaN: 6, Infinity: 7}
+
+[expect]
+{ "$key": 1, "_a$b": 2, "true": 3, "false": 4, "null": 5, "NaN": 6, "Infinity": 7 }
+
+== should keep json5 string escapes ==
+["\x41\v\0", 'it\'s']
+
+[expect]
+["\x41\v\0", "it's"]

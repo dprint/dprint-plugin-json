@@ -281,16 +281,10 @@ const COMMA_SC: &StringContainer = sc!(",");
 
 fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> PrintItems {
   let text = node.text(context.text);
-  let is_double_quotes = text.starts_with('"');
+  let is_single_quoted = text.starts_with('\'');
   let mut items = PrintItems::new();
-  let text = &text[1..text.len() - 1];
   items.push_sc(DOUBLE_QUOTE_SC);
-  if is_double_quotes {
-    items.push_str(&escape_control_chars(text));
-  } else {
-    let text = text.replace("\\'", "'").replace('"', "\\\"");
-    items.push_str(&escape_control_chars(&text));
-  }
+  items.push_str(&to_double_quoted_text(&text[1..text.len() - 1], is_single_quoted));
   items.push_sc(DOUBLE_QUOTE_SC);
   items
 }
@@ -817,27 +811,55 @@ fn should_break_up_single_line(ranged: &impl Ranged, context: &Context) -> bool 
     && range.width() > (context.config.line_width * 2) as usize
 }
 
-/// Escapes control characters (U+0000 through U+001F), which JSON doesn't allow
-/// unescaped in strings. The parser accepts them and the printer can't handle raw newlines.
-fn escape_control_chars(text: &str) -> Cow<'_, str> {
+/// Gets the text between a string's quotes for writing it in double quotes with the same value.
+///
+/// Control characters (U+0000 through U+001F), which JSON doesn't allow unescaped in strings,
+/// get escaped since the parser accepts them and the printer can't handle raw newlines. That
+/// includes a control character escaped the JSON5 way (ex. a backslash then a tab), and a JSON5
+/// line continuation (a backslash then a newline) is removed since it means nothing.
+fn to_double_quoted_text(text: &str, is_single_quoted: bool) -> Cow<'_, str> {
   // checking bytes is enough since every byte of a multi-byte utf-8 char is at least 0x80
-  if !text.bytes().any(|b| b < 0x20) {
+  let needs_change = |b: u8| b < 0x20 || is_single_quoted && matches!(b, b'"' | b'\'');
+  if !text.bytes().any(needs_change) {
     return Cow::Borrowed(text);
   }
 
   let mut result = String::with_capacity(text.len() + 8);
-  for c in text.chars() {
+  let mut chars = text.chars();
+  while let Some(c) = chars.next() {
     match c {
-      '\n' => result.push_str("\\n"),
-      '\r' => result.push_str("\\r"),
-      '\t' => result.push_str("\\t"),
-      '\u{08}' => result.push_str("\\b"),
-      '\u{0C}' => result.push_str("\\f"),
-      '\u{00}'..='\u{1F}' => write!(result, "\\u{:04x}", c as u32).unwrap(),
+      '\\' => match chars.next() {
+        Some('\n') => {}
+        Some('\r') => {
+          if chars.clone().next() == Some('\n') {
+            chars.next();
+          }
+        }
+        Some(c @ '\u{00}'..='\u{1F}') => push_escaped_control_char(&mut result, c),
+        Some('\'') if is_single_quoted => result.push('\''),
+        Some(c) => {
+          result.push('\\');
+          result.push(c);
+        }
+        None => result.push('\\'),
+      },
+      '"' if is_single_quoted => result.push_str("\\\""),
+      '\u{00}'..='\u{1F}' => push_escaped_control_char(&mut result, c),
       _ => result.push(c),
     }
   }
   Cow::Owned(result)
+}
+
+fn push_escaped_control_char(result: &mut String, c: char) {
+  match c {
+    '\n' => result.push_str("\\n"),
+    '\r' => result.push_str("\\r"),
+    '\t' => result.push_str("\\t"),
+    '\u{08}' => result.push_str("\\b"),
+    '\u{0C}' => result.push_str("\\f"),
+    _ => write!(result, "\\u{:04x}", c as u32).unwrap(),
+  }
 }
 
 fn sc_items(sc: &'static StringContainer) -> PrintItems {
