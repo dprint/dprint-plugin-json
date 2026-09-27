@@ -174,9 +174,9 @@ dependencies = [
 
 [[package]]
 name = "dprint-development"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b380bab000ac6a5321d235375cfb1a727b5ff48a27891dd018dc9f741e7cba9a"
+checksum = "b6696b3acf01bba505d35c400115ce277e6a5208ce41defa11799c53f6d02c5e"
 dependencies = [
  "console",
  "file_test_runner",

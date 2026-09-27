@@ -35,5 +35,5 @@ thiserror = "2"
 
 [dev-dependencies]
 debug-here = "0.2"
-dprint-development = "0.12.0"
+dprint-development = "0.12.1"
 serde_json = { version = "1.0" }
