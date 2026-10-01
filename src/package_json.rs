@@ -21,11 +21,12 @@ pub fn is_package_json_file(path: &Path) -> bool {
 ///
 /// The top level is written in the conventional field order, which is the one used by
 /// [`sort-package-json`](https://github.com/keithamus/sort-package-json), and the maps whose keys
-/// are package names or similar are written alphabetically, one level deep. A dependency section
-/// written in runs with a comment heading each is alphabetized a run at a time, with each heading
-/// left over its run. Everything else is left alone: the order of `exports` conditions and of
-/// `files`, `workspaces` or `scripts` entries is the author's to decide, and so is the order of
-/// anything a package manager reads as a list of rules rather than as a map.
+/// are package names or similar are written alphabetically, one level deep. A top level key
+/// starting with `//`, which stands in for a comment, stays above the field it was written over. A
+/// dependency section written in runs with a comment heading each is alphabetized a run at a time,
+/// with each heading left over its run. Everything else is left alone: the order of `exports`
+/// conditions and of `files`, `workspaces` or `scripts` entries is the author's to decide, and so is
+/// the order of anything a package manager reads as a list of rules rather than as a map.
 ///
 /// The work happens on the CST so that what was written with a property travels with it. Text that
 /// doesn't parse is handed back untouched, since the formatter is about to report that itself.
@@ -40,7 +41,7 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
   // A comment written above a top level property travels with it. A conventional order rearranges
   // the whole file, so a comment left behind would end up over a property it says nothing about,
   // and one written above `dependencies` is almost always about those.
-  root_object.sort_properties().by_key(top_level_field_key);
+  sort_top_level_fields(&root_object);
   for prop in root_object.properties() {
     let Some(section) = alphabetical_section(&decoded_name(&prop)) else {
       continue;
@@ -63,6 +64,37 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
   } else {
     Cow::Owned(sorted)
   }
+}
+
+/// Sorts the top level fields into the conventional order.
+///
+/// `package.json` has no comments, so a key starting with `//` is commonly written above a field to
+/// say something about it. Such a key is not a field of its own: it travels with the field written
+/// below it, the same way a comment does, and one with no field below it stays at the end.
+fn sort_top_level_fields(root_object: &CstObject) {
+  // walking upwards so that each comment key finds the field below it
+  let mut field = None;
+  let mut fields = HashMap::new();
+  for prop in root_object.properties().into_iter().rev() {
+    let index = prop.child_index();
+    if !is_comment_key(&decoded_name(&prop)) {
+      field = Some(prop);
+    }
+    fields.insert(index, field.clone());
+  }
+
+  root_object.sort_properties().by_key(|prop| {
+    // the index keeps a field's comment keys above it, in the order they were written
+    let index = prop.child_index();
+    let field = fields[&index].as_ref().map(top_level_field_key);
+    (field.is_none(), field, index)
+  });
+}
+
+/// Whether a key is the `package.json` stand-in for a comment (`"//"`, `"// node"`, ...), which npm
+/// reserves for that.
+fn is_comment_key(name: &str) -> bool {
+  name.starts_with("//")
 }
 
 /// Sorts a dependency section a run at a time.
