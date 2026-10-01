@@ -417,3 +417,184 @@
   "// zzz": "about zzz",
   "zzz": true
 }
+
+== should move a comment key with the field written below it inside a sorted section ==
+{
+  "name": "my-package",
+  "bin": {
+    "zzz": "./zzz.js",
+    "// aaa": "kept for the old name",
+    "aaa": "./aaa.js"
+  },
+  "dependencies": {
+    "// zod": "pinned until the v4 migration",
+    "zod": "3.0.0",
+    "//": "about chalk",
+    "//": "and more about chalk",
+    "chalk": "^5.0.0",
+    "// nothing": "with no dependency below it"
+  },
+  "engines": {
+    "npm": ">=10",
+    "// node": "Support import.meta.dirname and fetch",
+    "node": ">=22.16.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "bin": {
+    "// aaa": "kept for the old name",
+    "aaa": "./aaa.js",
+    "zzz": "./zzz.js"
+  },
+  "dependencies": {
+    "//": "about chalk",
+    "//": "and more about chalk",
+    "chalk": "^5.0.0",
+    "// zod": "pinned until the v4 migration",
+    "zod": "3.0.0",
+    "// nothing": "with no dependency below it"
+  },
+  "engines": {
+    "// node": "Support import.meta.dirname and fetch",
+    "node": ">=22.16.0",
+    "npm": ">=10"
+  }
+}
+
+== should keep a comment key in the run of the dependency written below it ==
+{
+  "name": "my-package",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "// chalk": "for the cli",
+    "chalk": "^5.0.0",
+
+    // the ones we patched
+    "// semver": "see patches/semver.patch",
+    "semver": "^7.0.0",
+    "glob": "^10.0.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {
+    "// chalk": "for the cli",
+    "chalk": "^5.0.0",
+    "zod": "^3.0.0",
+
+    // the ones we patched
+    "glob": "^10.0.0",
+    "// semver": "see patches/semver.patch",
+    "semver": "^7.0.0"
+  }
+}
+
+== should sort overrides that only repeat a comment key ==
+{
+  "name": "my-package",
+  "overrides": {
+    "//": "security fix",
+    "koa": "^3.0.0",
+    "//": "dedupe",
+    "axios": "^1.15.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "overrides": {
+    "//": "dedupe",
+    "axios": "^1.15.0",
+    "//": "security fix",
+    "koa": "^3.0.0"
+  }
+}
+
+== should leave a comment key at the end of its run when the next dependency is under another heading ==
+{
+  "name": "my-package",
+  "dependencies": {
+    "zod": "^3.0.0",
+    "ajv": "^8.0.0",
+    "// trailing": "about this run",
+
+    // the ones we patched
+    "semver": "^7.0.0",
+    "glob": "^10.0.0",
+
+    // the rest
+    "// note": "nothing here yet",
+
+    // tooling
+    "tsx": "^4.0.0",
+    "chalk": "^5.0.0",
+    "//": "last"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": {
+    "ajv": "^8.0.0",
+    "zod": "^3.0.0",
+    "// trailing": "about this run",
+
+    // the ones we patched
+    "glob": "^10.0.0",
+    "semver": "^7.0.0",
+
+    // the rest
+    "// note": "nothing here yet",
+
+    // tooling
+    "chalk": "^5.0.0",
+    "tsx": "^4.0.0",
+    "//": "last"
+  }
+}
+
+== should move a comment key with its dependency in a section opened on the brace line ==
+{
+  "name": "my-package",
+  "dependencies": { "zod": "^3.0.0",
+    "// chalk": "for the cli",
+    "chalk": "^5.0.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "dependencies": { "// chalk": "for the cli", "chalk": "^5.0.0", "zod": "^3.0.0" }
+}
+
+== should leave overrides that name a package twice alone, comment keys or not ==
+{
+  "name": "my-package",
+  "overrides": {
+    "//": "the order of these two matters",
+    "foo@2": "2.9.9",
+    "//": "fallback",
+    "foo@1 || 2": "1.0.0",
+    "bar": "1.0.0"
+  }
+}
+
+[expect]
+{
+  "name": "my-package",
+  "overrides": {
+    "//": "the order of these two matters",
+    "foo@2": "2.9.9",
+    "//": "fallback",
+    "foo@1 || 2": "1.0.0",
+    "bar": "1.0.0"
+  }
+}
