@@ -297,3 +297,123 @@
     "zz": "1"
   }
 }
+
+== should move a comment key with the field written below it ==
+{
+  "name": "example",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "tsc"
+  },
+  "// node": "Support import.meta.dirname and fetch",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "// nswag": "Stricter pin as breaking changes can be introduced in code generation",
+  "dependencies": {
+    "nswag": "14.0.0"
+  },
+  "// module-federation": "Resolve security issue with koa",
+  "resolutions": {
+    "axios": "^1.15.0"
+  }
+}
+
+[expect]
+{
+  "name": "example",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc"
+  },
+  "// module-federation": "Resolve security issue with koa",
+  "resolutions": {
+    "axios": "^1.15.0"
+  },
+  "// nswag": "Stricter pin as breaking changes can be introduced in code generation",
+  "dependencies": {
+    "nswag": "14.0.0"
+  },
+  "// node": "Support import.meta.dirname and fetch",
+  "engines": {
+    "node": ">=22.16.0"
+  }
+}
+
+== should keep several comment keys above a field in the order they were written ==
+{
+  "//": "zzz",
+  "//b": "second",
+  "// a": "third",
+  "version": "1.0.0",
+  "//": "the name",
+  "name": "my-package"
+}
+
+[expect]
+{
+  "//": "the name",
+  "name": "my-package",
+  "//": "zzz",
+  "//b": "second",
+  "// a": "third",
+  "version": "1.0.0"
+}
+
+== should leave a comment key with no field below it at the end ==
+{
+  "zzz": true,
+  "// version": "about the version",
+  "//": "more",
+  "version": "1.0.0",
+  "_id": "my-package@1.0.0",
+  "name": "my-package",
+  "//": "last"
+}
+
+[expect]
+{
+  "name": "my-package",
+  "// version": "about the version",
+  "//": "more",
+  "version": "1.0.0",
+  "zzz": true,
+  "_id": "my-package@1.0.0",
+  "//": "last"
+}
+
+== should move a comment key along with the comments and blank line written above it ==
+{
+  "version": "1.0.0",
+
+  // a real comment
+  "// zzz": "about zzz",
+  "zzz": true,
+  "// name": "an escaped comment key",
+  "name": "my-package",
+  "scripts": {
+    "// test": "left alone",
+    "test": "node --test",
+    "build": "tsc"
+  }
+}
+
+[expect]
+{
+  "// name": "an escaped comment key",
+  "name": "my-package",
+  "version": "1.0.0",
+  "scripts": {
+    "// test": "left alone",
+    "test": "node --test",
+    "build": "tsc"
+  },
+
+  // a real comment
+  "// zzz": "about zzz",
+  "zzz": true
+}
