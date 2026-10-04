@@ -21,10 +21,14 @@ use super::format_text::strip_bom;
 ///
 /// The range is widened to the lines of the object properties or array elements it touches in the
 /// innermost object or array that contains it, and the text outside of those is left as it was.
-/// When those members don't keep their order once formatted (ex. the `package.json` conventions
-/// reorder them) or the line breaks around them change, the member holding their object or array
-/// is formatted instead, and so on out to the whole file. A range that reaches the brackets of the
-/// root value formats the whole file and one outside of the root value formats nothing.
+/// When the line breaks around those members change once formatted, the member holding their
+/// object or array is formatted instead, and so on out to the whole file. A range that reaches
+/// the brackets of the root value formats the whole file and one outside of the root value
+/// formats nothing.
+///
+/// The `package.json` conventions only reorder the properties of an object when all of them are
+/// touched, and only reorder the top level along with the whole file, so that nothing outside of
+/// what's touched moves.
 pub fn format_text_range(
   path: &Path,
   text: &str,
@@ -49,7 +53,7 @@ pub fn format_text_range(
     Target::Levels(levels) => levels,
   };
 
-  let formatted = format_text_inner(path, body, config)?;
+  let formatted = format_text_inner(path, body, config, Some(&sections_to_reorder(&levels, &range)))?;
   let formatted_parse_result = parse(&formatted)?;
   let formatted_root = formatted_parse_result
     .value
@@ -148,6 +152,26 @@ fn find_levels<'a>(root: &'a Value<'a>, range: &Range<usize>) -> Target<'a> {
   }
 }
 
+/// The indexes of the root's properties that the `package.json` conventions may reorder the
+/// properties of, which are the ones whose values are entirely within what's touched.
+fn sections_to_reorder(levels: &[Level], range: &Range<usize>) -> Vec<usize> {
+  let root = &levels[0];
+  match levels.get(1) {
+    None => root
+      .indexes
+      .clone()
+      .filter(|index| {
+        let member = &root.members[*index].range;
+        range.start <= member.start && range.end >= member.end
+      })
+      .collect(),
+    Some(section) if levels.len() == 2 && section.indexes == (0..=section.members.len() - 1) => {
+      vec![*root.indexes.start()]
+    }
+    Some(_) => Vec::new(),
+  }
+}
+
 /// Finds the text to replace in the original and the formatted text to replace it with, starting
 /// with the innermost level and moving out towards the root.
 fn find_replacement(
@@ -172,7 +196,7 @@ fn find_replacement(
     .zip(&formatted_levels)
     .rev()
     .find_map(|(level, (formatted_container, formatted_members))| {
-      let formatted_indexes = level.members[level.indexes.clone()]
+      let mut formatted_indexes = level.members[level.indexes.clone()]
         .iter()
         .map(|member| {
           formatted_members
@@ -180,8 +204,11 @@ fn find_replacement(
             .position(|formatted| formatted.step == member.step)
         })
         .collect::<Option<Vec<_>>>()?;
-      let keeps_order = formatted_indexes.windows(2).all(|pair| pair[1] == pair[0] + 1);
-      if !keeps_order {
+      // the members may be reordered among themselves (ex. the properties of a `package.json`
+      // section that are all touched), but not with ones that aren't being replaced
+      formatted_indexes.sort_unstable();
+      let stays_together = formatted_indexes.windows(2).all(|pair| pair[1] == pair[0] + 1);
+      if !stays_together {
         return None;
       }
       let (first, last) = (*level.indexes.start(), *level.indexes.end());

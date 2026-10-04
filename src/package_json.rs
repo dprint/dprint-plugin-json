@@ -31,6 +31,18 @@ pub fn is_package_json_file(path: &Path) -> bool {
 /// The work happens on the CST so that what was written with a property travels with it. Text that
 /// doesn't parse is handed back untouched, since the formatter is about to report that itself.
 pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, str> {
+  apply_conventions_within(text, config, None)
+}
+
+/// Rewrites only the sections that are the values of the top level properties at the provided
+/// indexes, leaving the order of the top level and of every other section as it was written.
+///
+/// This is what formatting a range uses so that nothing outside of the range moves.
+pub fn apply_conventions_to_sections<'a>(text: &'a str, config: &Configuration, sections: &[usize]) -> Cow<'a, str> {
+  apply_conventions_within(text, config, Some(sections))
+}
+
+fn apply_conventions_within<'a>(text: &'a str, config: &Configuration, sections: Option<&[usize]>) -> Cow<'a, str> {
   let Ok(root) = CstRootNode::parse(text, &ParseOptions::default()) else {
     return Cow::Borrowed(text);
   };
@@ -41,8 +53,15 @@ pub fn apply_conventions<'a>(text: &'a str, config: &Configuration) -> Cow<'a, s
   // A comment written above a top level property travels with it. A conventional order rearranges
   // the whole file, so a comment left behind would end up over a property it says nothing about,
   // and one written above `dependencies` is almost always about those.
-  sort_fields(&root_object, None, top_level_field_key);
-  for prop in root_object.properties() {
+  if sections.is_none() {
+    sort_fields(&root_object, None, top_level_field_key);
+  }
+  for (index, prop) in root_object.properties().into_iter().enumerate() {
+    // the top level is only left in the order it was written when given the sections, so the
+    // indexes are still the ones the caller knows
+    if sections.is_some_and(|sections| !sections.contains(&index)) {
+      continue;
+    }
     let Some(section) = alphabetical_section(&decoded_name(&prop)) else {
       continue;
     };

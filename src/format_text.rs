@@ -40,14 +40,24 @@ impl FormatError {
 }
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>, FormatError> {
-  let result = format_text_inner(path, text, config)?;
+  let result = format_text_inner(path, text, config, None)?;
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
-pub(crate) fn format_text_inner(path: &Path, text: &str, config: &Configuration) -> Result<String, FormatError> {
+/// Formats a file, only applying the `package.json` conventions to the sections that are the
+/// values of the top level properties at the provided indexes when given any.
+pub(crate) fn format_text_inner(
+  path: &Path,
+  text: &str,
+  config: &Configuration,
+  package_json_sections: Option<&[usize]>,
+) -> Result<String, FormatError> {
   let text = strip_bom(text);
   let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
-    package_json::apply_conventions(text, config)
+    match package_json_sections {
+      Some(sections) => package_json::apply_conventions_to_sections(text, config, sections),
+      None => package_json::apply_conventions(text, config),
+    }
   } else {
     Cow::Borrowed(text)
   };

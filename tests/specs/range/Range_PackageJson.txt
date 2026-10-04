@@ -1,5 +1,5 @@
 -- package.json --
-== should find a property that the conventions move ==
+== should not move a touched property that the conventions would move ==
 {
   [|"version":"1.0.0"|],
   "dependencies": {"b":"1",
@@ -15,7 +15,105 @@
   "name":"a"
 }
 
-== should format the member holding an object the conventions reorder ==
+== should not reorder the touched top level properties ==
+{
+  [|"version":"1.0.0",
+  "name":"a"|],
+  "license":"MIT"
+}
+
+[expect]
+{
+  [|"version": "1.0.0",
+  "name": "a",|]
+  "license":"MIT"
+}
+
+== should not reorder the properties of a section when one is not touched ==
+{
+  "name":"a",
+  "dependencies": {
+    [|"c":"1",
+    "b":"1"|],
+    "a":"1"
+  }
+}
+
+[expect]
+{
+  "name":"a",
+  "dependencies": {
+    [|"c": "1",
+    "b": "1",|]
+    "a":"1"
+  }
+}
+
+== should not reorder the properties of a section when only one is touched ==
+{
+  "name":"a",
+  "dependencies": {
+    "c":"1",
+    [|"b":"1"|],
+    "a":"1"
+  }
+}
+
+[expect]
+{
+  "name":"a",
+  "dependencies": {
+    "c":"1",
+    [|"b": "1",|]
+    "a":"1"
+  }
+}
+
+== should reorder the properties of a section when all of them are touched ==
+{
+  "version":"1.0.0",
+  "dependencies": {
+    [|"c":"1",
+    "b":"1",
+    "a":"1"|]
+  },
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  "dependencies": {
+    [|"a": "1",
+    "b": "1",
+    "c": "1"|]
+  },
+  "name":"a"
+}
+
+== should reorder the properties of a section when the range is from its first to its last ==
+{
+  "version":"1.0.0",
+  "dependencies": {
+    "c"[|:"1",
+    "b":"1",
+    "a"|]:"1"
+  },
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  "dependencies": {
+    "a": "1",
+    "b": "1",
+    "c": "1"
+  },
+  "name":"a"
+}
+
+== should format the member holding a section when reordering all of its properties changes its line breaks ==
 {
   "name":"a",
   "version":"1.0.0",
@@ -30,7 +128,7 @@
   "dependencies": { "a": "1", "b": "1" }
 }
 
-== should format the file when a member moved to the end would lose its comma ==
+== should not move the member holding a section that is formatted ==
 {
   "version":"1.0.0",
   "dependencies": {[|"b":"1",
@@ -40,7 +138,121 @@
 
 [expect]
 {
+  "version":"1.0.0",
+  "dependencies": { "a": "1", "b": "1" },
+  "name":"a"
+}
+
+== should reorder the properties of a section that is all within the range ==
+{
+  "version":"1.0.0",
+  [|"dependencies": {
+    "b":"1",
+    "a":"1"
+  }|],
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  [|"dependencies": {
+    "a": "1",
+    "b": "1"
+  },|]
+  "name":"a"
+}
+
+== should not reorder the properties of a section when the range only touches its name ==
+{
+  "version":"1.0.0",
+  "depen[||]dencies": {
+    "b":"1",
+    "a":"1"
+  },
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  "depen[||]dencies": {
+    "b": "1",
+    "a": "1"
+  },
+  "name":"a"
+}
+
+== should only reorder the properties of the sections that are all within the range ==
+{
+  "version":"1.0.0",
+  [|"dependencies": {
+    "b":"1",
+    "a":"1"
+  },
+  "devDependencies": {
+    "d":"1",|]
+    "c":"1"
+  },
+  "name":"a"
+}
+
+[expect]
+{
+  "version":"1.0.0",
+  [|"dependencies": {
+    "a": "1",
+    "b": "1"
+  },
+  "devDependencies": {
+    "d": "1",|]
+    "c": "1"
+  },
+  "name":"a"
+}
+
+== should not reorder the properties of an object within a section property ==
+{
+  "name":"a",
+  "peerDependenciesMeta": {
+    "b": {
+      [|"optional":true|]
+    },
+    "a": {
+      "optional":true
+    }
+  }
+}
+
+[expect]
+{
+  "name":"a",
+  "peerDependenciesMeta": {
+    "b": {
+      [|"optional": true|]
+    },
+    "a": {
+      "optional":true
+    }
+  }
+}
+
+== should apply the conventions to the whole file when the range reaches its braces ==
+[|{
+  "version":"1.0.0",
+  "dependencies": {
+    "b":"1",
+    "a":"1"
+  },
+  "name":"a"
+}|]
+
+[expect]
+{
   "name": "a",
   "version": "1.0.0",
-  "dependencies": { "a": "1", "b": "1" }
+  "dependencies": {
+    "a": "1",
+    "b": "1"
+  }
 }
