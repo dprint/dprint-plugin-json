@@ -14,7 +14,7 @@ ${changelog}
 
 Then in your project's dprint configuration file:
 
-1. Specify the plugin url in the \`"plugins"\` array (can be done via \`dprint config add json\`).
+1. Specify the plugin url in the \`"plugins"\` array (can be done via \`dprint add json\`).
 2. Add a \`"json"\` configuration property if desired.
    \`\`\`jsonc
    {
