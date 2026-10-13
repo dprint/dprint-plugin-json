@@ -30,6 +30,7 @@ impl SyncPluginHandler<Configuration> for JsonPluginHandler {
       file_matching: FileMatchingInfo {
         file_extensions: vec!["json".to_string(), "jsonc".to_string()],
         file_names: vec![],
+        additive: false,
       },
     }
   }
