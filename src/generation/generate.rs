@@ -1,6 +1,8 @@
 use super::super::configuration::Configuration;
+use super::context::BumpVec;
 use super::context::Context;
 use super::token_finder::TokenFinder;
+use dprint_core::formatting::bumpalo::collections::CollectIn;
 use dprint_core::formatting::conditions::if_true_or;
 use dprint_core::formatting::ir_helpers::SingleLineOptions;
 use dprint_core::formatting::*;
@@ -126,7 +128,7 @@ fn gen_node_with_inner<'a>(
       Node::NullKeyword(_) => sc_items(context.arena, sc!("null")),
       Node::NumberLit(node) => {
         let mut items = PrintItems::new(context.arena);
-        items.push_str(node.value);
+        items.push_str_runtime_width_computed(node.value);
         items
       }
       Node::Object(node) => gen_object(node, context),
@@ -251,12 +253,12 @@ fn gen_dangling_comments<'a: 'b, 'b>(keys: &[usize], context: &mut Context<'a, '
     return items;
   }
   let after_line = context.text_info.line_index(after);
-  let mut dangling: Vec<&'b Comment<'a>> = keys
+  let mut dangling: BumpVec<&'b Comment<'a>> = keys
     .iter()
     .filter_map(|key| context.comments.get(key))
     .flat_map(|group| group.iter())
     .filter(|c| !context.has_handled_comment(c) && context.text_info.line_index(c.start()) > after_line)
-    .collect();
+    .collect_in(context.arena.bump());
   dangling.sort_by_key(|c| c.start());
   // jsonc-parser stores the same comment group under both surrounding token ends, so a comment can
   // appear under two of `keys`; drop the duplicates so it isn't emitted (with its newline) twice.
@@ -286,7 +288,9 @@ fn gen_string_lit<'a>(node: &'a StringLit, context: &mut Context<'a, '_>) -> Pri
   let is_single_quoted = text.starts_with('\'');
   let mut items = PrintItems::new(context.arena);
   items.push_sc(DOUBLE_QUOTE_SC);
-  items.push_str(&to_double_quoted_text(&text[1..text.len() - 1], is_single_quoted));
+  items.push_str_runtime_width_computed(
+    context.alloc_cow_str(to_double_quoted_text(&text[1..text.len() - 1], is_single_quoted)),
+  );
   items.push_sc(DOUBLE_QUOTE_SC);
   items
 }
@@ -295,7 +299,7 @@ fn gen_word_lit<'a>(node: &'a WordLit<'a>, context: &mut Context<'a, '_>) -> Pri
   // this will be a property name that's not a string literal
   let mut items = PrintItems::new(context.arena);
   items.push_sc(DOUBLE_QUOTE_SC);
-  items.push_str(node.value);
+  items.push_str_runtime_width_computed(node.value);
   items.push_sc(DOUBLE_QUOTE_SC);
   items
 }
@@ -323,7 +327,7 @@ fn gen_comma_separated_values<'a>(
   ir_helpers::gen_separated_values(
     |is_multi_line_or_hanging_ref| {
       let nodes_count = nodes.len();
-      let mut generated_nodes = Vec::with_capacity(nodes_count);
+      let mut generated_nodes = BumpVec::with_capacity_in(nodes_count, arena.bump());
       for (i, value) in nodes.enumerate() {
         let allow_inline_multi_line = value.kind() == NodeKind::Object;
         let lines_span = if compute_lines_span {
@@ -518,7 +522,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
           items.extend(
             ir_helpers::gen_separated_values(
               |_| {
-                let mut generated_comments = Vec::new();
+                let mut generated_comments = BumpVec::new_in(arena.bump());
                 for c in comments.iter() {
                   let start_line = context.text_info.line_index(c.start());
                   let end_line = context.text_info.line_index(c.end());
@@ -615,8 +619,8 @@ fn gen_trailing_comments_as_statements<'a>(node: &dyn Ranged, context: &mut Cont
 fn get_trailing_comments_as_statements<'a, 'b>(
   node: &dyn Ranged,
   context: &mut Context<'a, 'b>,
-) -> Vec<&'b Comment<'a>> {
-  let mut comments = Vec::new();
+) -> BumpVec<'b, &'b Comment<'a>> {
+  let mut comments = BumpVec::new_in(context.arena.bump());
   let node_end_line = context.text_info.line_index(node.end());
   if let Some(trailing_comments) = context.comments.get(&node.end()) {
     for comment in trailing_comments.iter() {
@@ -657,7 +661,9 @@ fn gen_comments_as_leading<'a: 'b, 'b>(
   context: &mut Context<'a, '_>,
 ) -> PrintItems<'a> {
   let mut items = PrintItems::new(context.arena);
-  let comments = comments.filter(|c| !context.has_handled_comment(c)).collect::<Vec<_>>();
+  let comments = comments
+    .filter(|c| !context.has_handled_comment(c))
+    .collect_in::<BumpVec<_>>(context.arena.bump());
 
   if !comments.is_empty() {
     let last_comment = comments.last().unwrap();
@@ -689,7 +695,7 @@ fn gen_comments_as_trailing<'a: 'b, 'b>(
   let node_end_line = context.text_info.line_index(node.end());
   let trailing_comments_on_same_line = comments
     .filter(|c| context.text_info.line_index(c.start()) <= node_end_line)
-    .collect::<Vec<_>>();
+    .collect_in::<BumpVec<_>>(context.arena.bump());
 
   let first_unhandled_comment = trailing_comments_on_same_line
     .iter()
