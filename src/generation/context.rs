@@ -4,8 +4,14 @@ use dprint_core::formatting::Arena;
 use jsonc_parser::CommentMap;
 use jsonc_parser::ast::*;
 use jsonc_parser::common::Ranged;
+use std::borrow::Cow;
 use std::collections::HashSet;
 use text_lines::TextLines;
+
+/// A `Vec` allocated in the arena, which is freed with the print items.
+///
+/// The arena doesn't run destructors, so only use it for values that don't need dropping.
+pub type BumpVec<'a, T> = dprint_core::formatting::bumpalo::collections::Vec<'a, T>;
 
 pub struct Context<'a, 'b> {
   pub arena: &'a Arena,
@@ -21,6 +27,15 @@ pub struct Context<'a, 'b> {
 }
 
 impl<'a, 'b> Context<'a, 'b> {
+  /// Gets text that lives as long as the print items, which is only
+  /// allocated in the arena when it's owned.
+  pub fn alloc_cow_str(&self, text: Cow<'a, str>) -> &'a str {
+    match text {
+      Cow::Borrowed(text) => text,
+      Cow::Owned(text) => self.arena.bump().alloc_str(&text),
+    }
+  }
+
   pub fn has_handled_comment(&self, comment: &Comment) -> bool {
     self.handled_comments.contains(&comment.start())
   }
