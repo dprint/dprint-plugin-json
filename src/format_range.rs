@@ -6,14 +6,15 @@ use std::path::Path;
 
 use dprint_core::configuration::NewLineKind;
 use dprint_core::configuration::resolve_new_line_kind;
+use dprint_core::formatting::ArenaPool;
 use jsonc_parser::ast::Value;
 use jsonc_parser::common::Ranged;
 use jsonc_parser::tokens::Token;
 
 use super::configuration::Configuration;
 use super::format_text::FormatError;
-use super::format_text::format_text;
 use super::format_text::format_text_inner;
+use super::format_text::format_text_with_arena_pool;
 use super::format_text::parse;
 use super::format_text::strip_bom;
 
@@ -35,25 +36,43 @@ pub fn format_text_range(
   range: Range<usize>,
   config: &Configuration,
 ) -> Result<Option<String>, FormatError> {
+  format_text_range_with_arena_pool(path, text, range, config, None)
+}
+
+/// Formats only the part of the text within the provided byte range, creating the arenas for
+/// formatting from the pool when given one.
+pub(crate) fn format_text_range_with_arena_pool(
+  path: &Path,
+  text: &str,
+  range: Range<usize>,
+  config: &Configuration,
+  arena_pool: Option<&ArenaPool>,
+) -> Result<Option<String>, FormatError> {
   let body = strip_bom(text);
   let bom_len = text.len() - body.len();
   let end = range.end.saturating_sub(bom_len).min(body.len());
   let range = range.start.saturating_sub(bom_len).min(end)..end;
   if range.start == 0 && range.end == body.len() {
-    return format_text(path, text, config);
+    return format_text_with_arena_pool(path, text, config, arena_pool);
   }
 
   let parse_result = parse(body)?;
   let Some(root) = &parse_result.value else {
-    return format_text(path, text, config);
+    return format_text_with_arena_pool(path, text, config, arena_pool);
   };
   let levels = match find_levels(root, &range) {
-    Target::File => return format_text(path, text, config),
+    Target::File => return format_text_with_arena_pool(path, text, config, arena_pool),
     Target::Nothing => return Ok(None),
     Target::Levels(levels) => levels,
   };
 
-  let formatted = format_text_inner(path, body, config, Some(&sections_to_reorder(&levels, &range)))?;
+  let formatted = format_text_inner(
+    path,
+    body,
+    config,
+    Some(&sections_to_reorder(&levels, &range)),
+    arena_pool,
+  )?;
   let formatted_parse_result = parse(&formatted)?;
   let formatted_root = formatted_parse_result
     .value
