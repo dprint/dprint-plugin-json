@@ -1,5 +1,6 @@
 use super::super::configuration::Configuration;
 use super::token_finder::TokenFinder;
+use dprint_core::formatting::Arena;
 use jsonc_parser::CommentMap;
 use jsonc_parser::ast::*;
 use jsonc_parser::common::Ranged;
@@ -7,8 +8,9 @@ use std::collections::HashSet;
 use text_lines::TextLines;
 
 pub struct Context<'a, 'b> {
+  pub arena: &'a Arena,
   pub config: &'b Configuration,
-  pub text: &'b str,
+  pub text: &'a str,
   pub text_info: TextLines,
   pub is_jsonc: bool,
   pub handled_comments: HashSet<usize>,

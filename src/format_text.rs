@@ -2,6 +2,8 @@ use std::borrow::Cow;
 use std::path::Path;
 
 use dprint_core::configuration::resolve_new_line_kind;
+use dprint_core::formatting::Arena;
+use dprint_core::formatting::ArenaPool;
 use dprint_core::formatting::PrintOptions;
 use jsonc_parser::CollectOptions;
 use jsonc_parser::CommentCollectionStrategy;
@@ -40,7 +42,17 @@ impl FormatError {
 }
 
 pub fn format_text(path: &Path, text: &str, config: &Configuration) -> Result<Option<String>, FormatError> {
-  let result = format_text_inner(path, text, config, None)?;
+  format_text_with_arena_pool(path, text, config, None)
+}
+
+/// Formats a file, creating the arena for formatting from the pool when given one.
+pub(crate) fn format_text_with_arena_pool(
+  path: &Path,
+  text: &str,
+  config: &Configuration,
+  arena_pool: Option<&ArenaPool>,
+) -> Result<Option<String>, FormatError> {
+  let result = format_text_inner(path, text, config, None, arena_pool)?;
   if result == text { Ok(None) } else { Ok(Some(result)) }
 }
 
@@ -51,6 +63,7 @@ pub(crate) fn format_text_inner(
   text: &str,
   config: &Configuration,
   package_json_sections: Option<&[usize]>,
+  arena_pool: Option<&ArenaPool>,
 ) -> Result<String, FormatError> {
   let text = strip_bom(text);
   let text = if config.package_json_apply_conventions && package_json::is_package_json_file(path) {
@@ -64,8 +77,11 @@ pub(crate) fn format_text_inner(
   let parse_result = parse(&text)?;
   // only used for jsonc trailing commas, so avoid matching the path otherwise
   let is_jsonc = config.trailing_commas == TrailingCommaKind::Jsonc && is_jsonc_file(path, config);
-  Ok(dprint_core::formatting::format(
-    || generate(parse_result, &text, config, is_jsonc),
+  // the arena is created after the parsed file so the print items can borrow from it
+  let arena = create_arena(arena_pool);
+  let print_items = generate(&arena, &parse_result, &text, config, is_jsonc);
+  Ok(dprint_core::formatting::print(
+    print_items,
     config_to_print_options(&text, config),
   ))
 }
@@ -73,9 +89,9 @@ pub(crate) fn format_text_inner(
 #[cfg(feature = "tracing")]
 pub fn trace_file(text: &str, config: &Configuration) -> dprint_core::formatting::TracingResult {
   let parse_result = parse(text).unwrap();
-
+  let arena = Arena::new();
   dprint_core::formatting::trace_printing(
-    || generate(parse_result, text, config, false),
+    generate(&arena, &parse_result, text, config, false),
     config_to_print_options(text, config),
   )
 }
@@ -106,6 +122,13 @@ pub(crate) fn parse(text: &str) -> Result<ParseResult<'_>, FormatError> {
         source: err,
       })
     }
+  }
+}
+
+fn create_arena(arena_pool: Option<&ArenaPool>) -> Arena {
+  match arena_pool {
+    Some(arena_pool) => arena_pool.create_arena(),
+    None => Arena::new(),
   }
 }
 

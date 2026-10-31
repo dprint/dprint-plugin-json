@@ -14,6 +14,8 @@ use dprint_core::plugins::SyncPluginHandler;
 
 use super::configuration::Configuration;
 use super::configuration::resolve_config;
+use super::format_range::format_text_range_with_arena_pool;
+use super::format_text::format_text_with_arena_pool;
 
 struct JsonPluginHandler;
 
@@ -65,8 +67,14 @@ impl SyncPluginHandler<Configuration> for JsonPluginHandler {
   ) -> FormatResult {
     let file_text = String::from_utf8(request.file_bytes)?;
     match request.range {
-      Some(range) => super::format_text_range(request.file_path, &file_text, range, request.config),
-      None => super::format_text(request.file_path, &file_text, request.config),
+      Some(range) => format_text_range_with_arena_pool(
+        request.file_path,
+        &file_text,
+        range,
+        request.config,
+        Some(request.arena_pool),
+      ),
+      None => format_text_with_arena_pool(request.file_path, &file_text, request.config, Some(request.arena_pool)),
     }
     .map(|maybe_text| maybe_text.map(|t| t.into_bytes()))
     .map_err(FormatError::new)
