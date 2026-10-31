@@ -522,7 +522,7 @@ fn gen_surrounded_by_tokens<'a, 'b>(
           items.extend(
             ir_helpers::gen_separated_values(
               |_| {
-                let mut generated_comments = BumpVec::new_in(arena.bump());
+                let mut generated_comments = BumpVec::with_capacity_in(comments.len(), arena.bump());
                 for c in comments.iter() {
                   let start_line = context.text_info.line_index(c.start());
                   let end_line = context.text_info.line_index(c.end());
@@ -620,13 +620,14 @@ fn get_trailing_comments_as_statements<'a, 'b>(
   node: &dyn Ranged,
   context: &mut Context<'a, 'b>,
 ) -> BumpVec<'b, &'b Comment<'a>> {
-  let mut comments = BumpVec::new_in(context.arena.bump());
+  let Some(trailing_comments) = context.comments.get(&node.end()) else {
+    return BumpVec::new_in(context.arena.bump());
+  };
+  let mut comments = BumpVec::with_capacity_in(trailing_comments.len(), context.arena.bump());
   let node_end_line = context.text_info.line_index(node.end());
-  if let Some(trailing_comments) = context.comments.get(&node.end()) {
-    for comment in trailing_comments.iter() {
-      if !context.has_handled_comment(comment) && node_end_line < context.text_info.line_index(comment.end()) {
-        comments.push(comment);
-      }
+  for comment in trailing_comments.iter() {
+    if !context.has_handled_comment(comment) && node_end_line < context.text_info.line_index(comment.end()) {
+      comments.push(comment);
     }
   }
   comments
