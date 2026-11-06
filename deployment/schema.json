@@ -2,6 +2,58 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://plugins.dprint.dev/dprint/dprint-plugin-json/0.0.0/schema.json",
   "type": "object",
+  "x-playground": {
+    "input": [
+      "{\"name\":\"inventory-service\",\"version\":\"1.4.0\",",
+      "  //where the service listens",
+      "  \"server\":{",
+      "      \"host\":\"0.0.0.0\",\"port\":8080,",
+      "      \"timeouts\":{\"readSeconds\":30,\"writeSeconds\":30}},",
+      "\"features\":[\"search\",\"export\",",
+      "\"audit-log\"],",
+      "    \"database\": {",
+      "        \"url\":\"postgres://localhost:5432/inventory\",",
+      "        \"pool\":{\"min\":2,\"max\":10}",
+      "    },",
+      "  \"retry\":{\"attempts\":3,\"backoffMs\":[100,500,2000]},",
+      "  \"logging\":{\"level\":\"info\",\"format\":\"json\",",
+      "  \"redact\":[\"password\",\"token\"]}",
+      "}"
+    ]
+  },
+  "x-sections": [{
+    "title": "General",
+    "description": "The width, indentation, and newlines of the file.",
+    "properties": [
+      "lineWidth",
+      "indentWidth",
+      "useTabs",
+      "newLineKind",
+      "eofNewLine"
+    ]
+  }, {
+    "title": "Arrays and objects",
+    "description": "When arrays and objects go on a single line, and their spacing and trailing commas.",
+    "properties": [
+      "preferSingleLine",
+      "spaceSurroundingProperties",
+      "trailingCommas",
+      "jsonTrailingCommaFiles"
+    ]
+  }, {
+    "title": "Comments",
+    "description": "The spacing of line comments and the comment that stops a value from being formatted.",
+    "properties": [
+      "commentLine.forceSpaceAfterSlashes",
+      "ignoreNodeCommentText"
+    ]
+  }, {
+    "title": "package.json",
+    "description": "The conventions applied to `package.json` files.",
+    "properties": [
+      "packageJson.applyConventions"
+    ]
+  }],
   "definitions": {
     "preferSingleLine": {
       "description": "If arrays and objects should collapse to a single line if it would be below the line width.",
@@ -9,10 +61,10 @@
       "default": false,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Puts arrays and objects that span multiple lines on a single line when they fit within the line width."
       }, {
         "const": false,
-        "description": ""
+        "description": "Maintains arrays and objects being on multiple lines."
       }]
     }
   },
@@ -20,12 +72,15 @@
     "lineWidth": {
       "description": "The width of a line the printer will try to stay under. Note that the printer may exceed this width in certain cases.",
       "default": 120,
-      "type": "number"
+      "type": "integer",
+      "minimum": 1
     },
     "indentWidth": {
       "description": "The number of characters for an indent.",
       "default": 2,
-      "type": "number"
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 255
     },
     "useTabs": {
       "description": "Whether to use tabs (true) or spaces (false).",
@@ -33,10 +88,10 @@
       "default": false,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Uses tabs for indentation."
       }, {
         "const": false,
-        "description": ""
+        "description": "Uses spaces for indentation."
       }]
     },
     "newLineKind": {
@@ -70,25 +125,77 @@
       }]
     },
     "commentLine.forceSpaceAfterSlashes": {
-      "description": "Forces a space after slashes.  For example: `// comment` instead of `//comment`",
+      "description": "Forces a space after the slashes of a line comment. For example: `// comment` instead of `//comment`",
       "type": "boolean",
       "default": true,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Adds a space after the slashes when there isn't one."
       }, {
         "const": false,
-        "description": ""
-      }]
+        "description": "Maintains the text after the slashes."
+      }],
+      "x-example": {
+        "input": [
+          "{",
+          "  //the port to listen on",
+          "  \"port\": 8080",
+          "}"
+        ]
+      }
     },
     "preferSingleLine": {
-      "$ref": "#/definitions/preferSingleLine"
+      "$ref": "#/definitions/preferSingleLine",
+      "x-example": {
+        "input": [
+          "{",
+          "  \"items\": [",
+          "    1,",
+          "    2",
+          "  ],",
+          "  \"point\": {",
+          "    \"x\": 1,",
+          "    \"y\": 2",
+          "  }",
+          "}"
+        ]
+      }
     },
     "array.preferSingleLine": {
-      "$ref": "#/definitions/preferSingleLine"
+      "$ref": "#/definitions/preferSingleLine",
+      "x-overrides": "preferSingleLine",
+      "x-example": {
+        "input": [
+          "{",
+          "  \"items\": [",
+          "    1,",
+          "    2",
+          "  ],",
+          "  \"point\": {",
+          "    \"x\": 1,",
+          "    \"y\": 2",
+          "  }",
+          "}"
+        ]
+      }
     },
     "object.preferSingleLine": {
-      "$ref": "#/definitions/preferSingleLine"
+      "$ref": "#/definitions/preferSingleLine",
+      "x-overrides": "preferSingleLine",
+      "x-example": {
+        "input": [
+          "{",
+          "  \"items\": [",
+          "    1,",
+          "    2",
+          "  ],",
+          "  \"point\": {",
+          "    \"x\": 1,",
+          "    \"y\": 2",
+          "  }",
+          "}"
+        ]
+      }
     },
     "spaceSurroundingProperties": {
       "description": "Whether to add a space surrounding the properties of single line objects.",
@@ -100,18 +207,26 @@
       }, {
         "const": false,
         "description": "Ex. `{\"key\": \"value\"}`"
-      }]
+      }],
+      "x-example": {
+        "input": [
+          "{",
+          "  \"point\": {\"x\": 1, \"y\": 2},",
+          "  \"size\": { \"width\": 10, \"height\": 20 }",
+          "}"
+        ]
+      }
     },
     "packageJson.applyConventions": {
-      "description": "Whether to write a package.json file's properties in the conventional order, alphabetizing the dependency sections. A comment set off by a blank line in a dependency section heads a run, and each run is alphabetized on its own.",
+      "description": "Whether to write a `package.json` file's properties in the conventional order, alphabetizing the dependency sections. A comment set off by a blank line in a dependency section heads a run, and each run is alphabetized on its own.",
       "type": "boolean",
       "default": true,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Orders the properties in the conventional order and alphabetizes the dependency sections."
       }, {
         "const": false,
-        "description": ""
+        "description": "Maintains the order of the properties."
       }]
     },
     "trailingCommas": {
@@ -145,10 +260,10 @@
       "default": false,
       "oneOf": [{
         "const": true,
-        "description": ""
+        "description": "Uses the configuration of `deno fmt` for the properties that aren't set."
       }, {
         "const": false,
-        "description": ""
+        "description": "Uses the plugin's defaults."
       }]
     },
     "ignoreNodeCommentText": {
